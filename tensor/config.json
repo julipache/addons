@@ -1,6 +1,6 @@
 {
   "name": "tensor",
-  "version": "0.6",
+  "version": "0.7",
   "slug": "image_analyzer",
   "description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
   "uart": true,
@@ -23,7 +23,8 @@
   "panel_icon": "mdi:zigbee",
   "map": [
     "share:rw",
-    "config:rw"
+    "config:rw",
+	"media:rw"
   ],
   "ports": {
     "8485/tcp": 8485,
