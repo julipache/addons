@@ -61,5 +61,5 @@ def predict_directory_images(directory_path, model_path):
 
 # Path to the directory containing images and model
 directory_path = '/media/frigate/clips/sala_estar'
-model_path = '/path/to/your/mi_modelo_entrenado.h5'  # Update this path as necessary
+model_path = '/media/mi_modelo_entrenado.h5'  # Update this path as necessary
 predict_directory_images(directory_path, model_path)
