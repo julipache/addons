@@ -3,8 +3,14 @@
   "version": "0.1",
   "slug": "image_analyzer",
   "description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
-  "url": "https://github.com/julipache/addons/tree/main/tensor",
-  "arch": ["amd64", "aarch64", "armhf", "armv7", "i386"],
+  "url": "https://github.com/julipache/addons/tree/main/tensor",  
+  "arch": [
+    "aarch64",
+    "amd64",
+    "armhf",
+    "armv7",
+    "i386"
+  ],
   "startup": "application",
   "boot": "auto",
   "options": {},
