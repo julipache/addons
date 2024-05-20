@@ -12,7 +12,7 @@ def load_and_prepare_image(img_path, target_size=(128, 128)):
     return img_array
 
 def predict_directory_images(directory_path):
-    model_path = 'D:\\pina\\mi_modelo_entrenado.h5'
+    model_path = 'mi_modelo_entrenado.h5'
     model = load_model(model_path)
     class_labels = {0: 'coco',1: 'pina', 2: 'pollo', 3: 'ray',4: 'snape'}  # Ajusta según tus clases
     
@@ -49,5 +49,5 @@ def predict_directory_images(directory_path):
             print(f"No images to analyze for class {class_name}.")
 
 # Path to the directory containing images
-directory_path = 'D:\\pruebas'
+directory_path = '/media/frigate/clips/sala_estar'
 predict_directory_images(directory_path)
