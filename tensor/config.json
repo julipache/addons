@@ -1,73 +1,75 @@
 {
-  "name": "tensor",
-  "version": "1.0",
-  "slug": "image_analyzer",
-  "description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
-  "uart": true,
-  "url": "https://github.com/julipache/addons/tree/main/tensor",  
-  "startup": "application",
-  "services": [
-    "mqtt:need"
-  ],
-  "arch": [
-    "aarch64",
-    "amd64",
-    "armhf",
-    "armv7",
-    "i386"
-  ],
-  "boot": "auto",
-  "init": false,
-  "ingress": true,
-  "timeout": 30,
-  "panel_icon": "mdi:zigbee",
-  "map": [
-    "share:rw",
-    "config:rw",
-	"media:rw"
-  ],
-  "ports": {
-    "8485/tcp": 8485,
-    "8099/tcp": null
-  },
-  "ports_description": {
-    "8485/tcp": "Socat tcp-listen port",
-    "8099/tcp": "Frontend tcp-listen port"
-  },
-  "options": {
-    "data_path": "/config/tensor",
-    "socat": {
-      "enabled": false,
-      "master": "pty,raw,echo=0,link=/tmp/ttyZ2M,mode=777",
-      "slave": "tcp-listen:8485,keepalive,nodelay,reuseaddr,keepidle=1,keepintvl=1,keepcnt=5",
-      "options": "-d -d",
-      "log": false
-    },
-    "mqtt": {},
-    "serial": {}
-  },
-  "schema": {
-    "data_path": "str",
-    "socat": {
-      "enabled": "bool?",
-      "master": "str?",
-      "slave": "str?",
-      "options": "str?",
-      "log": "bool?"
-    },
-    "mqtt": {
-      "server": "str?",
-      "ca": "str?",
-      "key": "str?",
-      "cert": "str?",
-      "user": "str?",
-      "password": "str?"
-    },
-    "serial": {
-      "port": "str?",
-      "adapter": "match(zstack|deconz|zigate|ezsp|ember)?",
-      "baudrate": "int?",
-      "rtscts": "bool?"
-    }
-  }
+	"name": "tensor",
+	"version": "1.1",
+	"slug": "image_analyzer",
+	"description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
+	"uart": true,
+	"url": "https://github.com/julipache/addons/tree/main/tensor",
+	"startup": "application",
+	"services": [
+		"mqtt:need"
+	],
+	"arch": [
+		"aarch64",
+		"amd64",
+		"armhf",
+		"armv7",
+		"i386"
+	],
+	"boot": "auto",
+	"init": false,
+	"ingress": true,
+	"timeout": 30,
+	"panel_icon": "mdi:zigbee",
+	"map": [
+		"share:rw",
+		"config:rw",
+		"media:rw"
+	],
+	"ports": {
+		"8485/tcp": 8485,
+		"8099/tcp": null
+	},
+	"ports_description": {
+		"8485/tcp": "Socat tcp-listen port",
+		"8099/tcp": "Frontend tcp-listen port"
+	},
+	"options": {
+		"data_path": "/config/tensor",
+		"interval": 3600,
+		"socat": {
+			"enabled": false,
+			"master": "pty,raw,echo=0,link=/tmp/ttyZ2M,mode=777",
+			"slave": "tcp-listen:8485,keepalive,nodelay,reuseaddr,keepidle=1,keepintvl=1,keepcnt=5",
+			"options": "-d -d",
+			"log": false
+		},
+		"mqtt": {},
+		"serial": {}
+	},
+	"schema": {
+		"data_path": "str",
+		"interval": "int?",
+		"socat": {
+			"enabled": "bool?",
+			"master": "str?",
+			"slave": "str?",
+			"options": "str?",
+			"log": "bool?"
+		},
+		"mqtt": {
+			"server": "str?",
+			"ca": "str?",
+			"key": "str?",
+			"cert": "str?",
+			"user": "str?",
+			"password": "str?"
+		},
+		"serial": {
+			"port": "str?",
+			"adapter": "match(zstack|deconz|zigate|ezsp|ember)?",
+			"baudrate": "int?",
+			"rtscts": "bool?"
+		}
+	}
 }

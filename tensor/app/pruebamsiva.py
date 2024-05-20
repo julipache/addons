@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import shutil
+import time
+import json
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
@@ -31,9 +33,8 @@ def predict_directory_images(directory_path, model_path):
     correct_predictions = {label: 0 for label in class_labels.values()}
     total_predictions = {label: 0 for label in class_labels.values()}
 
-    # List all files in directory
     for filename in os.listdir(directory_path):
-        if filename.endswith(".png") or filename.endswith(".jpg"):  # Check for image files
+        if filename.endswith(".png") or filename.endswith(".jpg"):
             img_path = os.path.join(directory_path, filename)
             img = load_and_prepare_image(img_path)
             if img is None:
@@ -42,10 +43,9 @@ def predict_directory_images(directory_path, model_path):
             predictions = model.predict(img)
             predicted_class_index = np.argmax(predictions, axis=1)
             predicted_class_name = class_labels[predicted_class_index[0]]
-            confidence = np.max(predictions) * 100  # Confidence of the prediction
-            actual_class_name = filename.split('_')[0]  # Assuming file name starts with the class name
+            confidence = np.max(predictions) * 100
 
-            # Move the file to the predicted subfolder
+            actual_class_name = filename.split('_')[0]
             target_folder = os.path.join(directory_path, predicted_class_name)
             os.makedirs(target_folder, exist_ok=True)
             shutil.move(img_path, os.path.join(target_folder, filename))
@@ -57,15 +57,28 @@ def predict_directory_images(directory_path, model_path):
                 if predicted_class_name == actual_class_name:
                     correct_predictions[actual_class_name] += 1
 
-    # Calculate and print accuracy for each class
     for class_name in class_labels.values():
         if total_predictions[class_name] > 0:
             accuracy = (correct_predictions[class_name] / total_predictions[class_name]) * 100
             print(f"Accuracy for {class_name}: {accuracy:.2f}% ({correct_predictions[class_name]}/{total_predictions[class_name]})")
-        else:
-            print(f"No images to analyze for class {class_name}.")
 
-# Path to the directory containing images and model
-directory_path = '/media/frigate/clips/sala_estar'
-model_path = '/media/mi_modelo_entrenado.h5'  # Update this path as necessary
-predict_directory_images(directory_path, model_path)
+def load_configuration():
+    try:
+        with open('/data/options.json', 'r') as file:
+            data = json.load(file)
+            return data['interval']
+    except Exception as e:
+        print(f"Error loading configuration: {str(e)}")
+        return 3600  # Default to 1 hour if any error
+
+def main():
+    interval = load_configuration()  # Load the execution interval from configuration
+    directory_path = '/media/frigate/clips/sala_estar'
+    model_path = '/media/mi_modelo_entrenado.h5'
+
+    while True:
+        predict_directory_images(directory_path, model_path)
+        time.sleep(interval)
+
+if __name__ == "__main__":
+    main()
