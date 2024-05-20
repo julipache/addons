@@ -1,0 +1,26 @@
+{
+  "name": "Image Analyzer",
+  "version": "0.1",
+  "slug": "image_analyzer",
+  "description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
+  "url": "https://github.com/julipache/addons/",
+  "arch": ["amd64", "aarch64", "armhf", "armv7", "i386"],
+  "startup": "application",
+  "boot": "auto",
+  "options": {},
+  "schema": {},
+  "ports": {
+    "8080/tcp": 8080
+  },
+  "host_network": false,
+  "auto_uart": false,
+  "map": ["config:rw", "media:rw"],
+  "apparmor": "profile",
+  "privileged": ["SYS_ADMIN"],
+  "services": [],
+  "environment": {},
+  "io": {
+    "maximum": 10,
+    "unit": "MB/s"
+  }
+}
