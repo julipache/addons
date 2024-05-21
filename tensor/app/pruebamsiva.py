@@ -18,7 +18,7 @@ def load_and_prepare_image(img_path, target_size=(128, 128)):
         print(f"Error processing image {img_path}: {str(e)}")
         return None
 
-def predict_directory_images(directory_path, model_path):
+def predict_directory_images(directory_path, model_path, confidence_threshold=50.0):
     if not os.path.exists(directory_path):
         print(f"Directory does not exist: {directory_path}")
         return
@@ -44,6 +44,10 @@ def predict_directory_images(directory_path, model_path):
             predicted_class_index = np.argmax(predictions, axis=1)
             predicted_class_name = class_labels[predicted_class_index[0]]
             confidence = np.max(predictions) * 100
+
+            if confidence < confidence_threshold:
+                print(f"File: {filename} - Prediction confidence ({confidence:.2f}%) below threshold, no prediction made.")
+                continue
 
             actual_class_name = filename.split('_')[0]
             target_folder = os.path.join(directory_path, predicted_class_name)
