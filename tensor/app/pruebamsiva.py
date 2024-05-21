@@ -44,7 +44,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
             predicted_class_index = np.argmax(predictions, axis=1)
             predicted_class_name = class_labels[predicted_class_index[0]]
             confidence = np.max(predictions) * 100
-             print(f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}")
+            print(f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}")
 
 
             if confidence < confidence_threshold:
