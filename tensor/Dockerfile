@@ -1,7 +1,7 @@
 FROM python:3.10-slim
 
 # Instalar dependencias necesarias
-RUN pip install tensorflow numpy pillow
+RUN pip install tensorflow numpy pillow opencv-python
 
 # Establecer el directorio de trabajo
 WORKDIR /app
