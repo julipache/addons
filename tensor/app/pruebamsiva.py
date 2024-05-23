@@ -24,12 +24,13 @@ def load_and_prepare_image(img_array, target_size=(128, 128)):
 def load_yolo_model(config_path, weights_path, classes_path):
     net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
     layer_names = net.getLayerNames()
-    output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+    output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
     
     with open(classes_path, 'r') as f:
         classes = [line.strip() for line in f.readlines()]
         
     return net, output_layers, classes
+
 
 def detect_objects_yolo(img, net, output_layers, confidence_threshold=0.5, nms_threshold=0.4):
     height, width, channels = img.shape
