@@ -11,6 +11,9 @@ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 # Funciones para cargar y preparar imágenes para el modelo de clasificación
 def load_and_prepare_image(img_array, target_size=(128, 128)):
     try:
+        if img_array is None or img_array.size == 0:
+            raise ValueError("Empty image array received for processing")
+        
         img = cv2.resize(img_array, target_size)
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
@@ -86,6 +89,11 @@ def predict_directory_images(directory_path, yolo_model, output_layers, yolo_cla
         if filename.endswith(".png") or filename.endswith(".jpg"):
             img_path = os.path.join(directory_path, filename)
             img = cv2.imread(img_path)
+            
+            if img is None:
+                print(f"Error loading image: {img_path}")
+                continue
+            
             detections = detect_objects_yolo(img, yolo_model, output_layers, confidence_threshold)
 
             for detection in detections:
