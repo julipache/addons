@@ -31,7 +31,6 @@ def load_yolo_model(config_path, weights_path, classes_path):
         
     return net, output_layers, classes
 
-
 def detect_objects_yolo(img, net, output_layers, confidence_threshold=0.5, nms_threshold=0.4):
     height, width, channels = img.shape
 
@@ -64,14 +63,14 @@ def detect_objects_yolo(img, net, output_layers, confidence_threshold=0.5, nms_t
     indices = cv2.dnn.NMSBoxes(boxes, confidences, confidence_threshold, nms_threshold)
 
     results = []
-    for i in indices:
-        i = i[0]
-        box = boxes[i]
-        results.append({
-            'class_id': class_ids[i],
-            'confidence': confidences[i],
-            'box': box
-        })
+    if len(indices) > 0:
+        for i in indices.flatten():
+            box = boxes[i]
+            results.append({
+                'class_id': class_ids[i],
+                'confidence': confidences[i],
+                'box': box
+            })
 
     return results
 
