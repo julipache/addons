@@ -3,6 +3,9 @@ import os
 import shutil
 import time
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
@@ -17,6 +20,28 @@ def load_and_prepare_image(img_path, target_size=(128, 128)):
     except Exception as e:
         print(f"Error processing image {img_path}: {str(e)}")
         return None
+
+def send_email(subject, body):
+    sender_email = "75642e001@smtp-brevo.com"
+    receiver_email = "julioalberto85@gmail.com"  # Reemplaza con el correo del destinatario
+    password = "8nP5LXfVT1tmvCgW"
+
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+
+    message.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp-relay.brevo.com", 587)
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, message.as_string())
+        server.close()
+        print("Email sent successfully")
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
 
 def predict_directory_images(directory_path, model_path, confidence_threshold=60.0):
     if not os.path.exists(directory_path):
@@ -37,6 +62,8 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     doubtful_dir = os.path.join(directory_path, 'dudosos')
     os.makedirs(doubtful_dir, exist_ok=True)
 
+    analysis_report = ""
+
     for filename in os.listdir(directory_path):
         if filename.endswith(".png") or filename.endswith(".jpg"):
             img_path = os.path.join(directory_path, filename)
@@ -50,7 +77,9 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
             confidence = np.max(predictions) * 100
 
             if confidence < confidence_threshold:
-                print(f"File: {filename} - Prediction confidence ({confidence:.2f}%) below threshold, moved to 'dudosos'.")
+                report_line = f"File: {filename} - Prediction confidence ({confidence:.2f}%) below threshold, moved to 'dudosos'."
+                print(report_line)
+                analysis_report += report_line + "\n"
                 shutil.move(img_path, os.path.join(doubtful_dir, filename))
                 continue
 
@@ -59,7 +88,9 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
             os.makedirs(target_folder, exist_ok=True)
             shutil.move(img_path, os.path.join(target_folder, filename))
 
-            print(f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}")
+            report_line = f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}"
+            print(report_line)
+            analysis_report += report_line + "\n"
 
             if actual_class_name in class_labels.values():
                 total_predictions[actual_class_name] += 1
@@ -69,7 +100,11 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     for class_name in class_labels.values():
         if total_predictions[class_name] > 0:
             accuracy = (correct_predictions[class_name] / total_predictions[class_name]) * 100
-            print(f"Accuracy for {class_name}: {accuracy:.2f}% ({correct_predictions[class_name]}/{total_predictions[class_name]})")
+            report_line = f"Accuracy for {class_name}: {accuracy:.2f}% ({correct_predictions[class_name]}/{total_predictions[class_name]})"
+            print(report_line)
+            analysis_report += report_line + "\n"
+
+    send_email("Photo Analysis Report", analysis_report)
 
 def load_configuration():
     try:
