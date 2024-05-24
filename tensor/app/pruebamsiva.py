@@ -6,6 +6,8 @@ import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
@@ -21,7 +23,7 @@ def load_and_prepare_image(img_path, target_size=(128, 128)):
         print(f"Error processing image {img_path}: {str(e)}")
         return None
 
-def send_email(subject, body):
+def send_email(subject, body, attached_files):
     sender_email = "75642e001@smtp-brevo.com"
     receiver_email = "julioalberto85@gmail.com"  # Reemplaza con el correo del destinatario
     password = "8nP5LXfVT1tmvCgW"
@@ -32,6 +34,20 @@ def send_email(subject, body):
     message["Subject"] = subject
 
     message.attach(MIMEText(body, "plain"))
+
+    for file_path in attached_files:
+        try:
+            with open(file_path, "rb") as attachment:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f"attachment; filename= {os.path.basename(file_path)}",
+            )
+            message.attach(part)
+        except Exception as e:
+            print(f"Error attaching file {file_path}: {str(e)}")
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -63,6 +79,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     os.makedirs(doubtful_dir, exist_ok=True)
 
     analysis_report = ""
+    attached_files = []
 
     for filename in os.listdir(directory_path):
         if filename.endswith(".png") or filename.endswith(".jpg"):
@@ -91,6 +108,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
             report_line = f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}"
             print(report_line)
             analysis_report += report_line + "\n"
+            attached_files.append(os.path.join(target_folder, filename))
 
             if actual_class_name in class_labels.values():
                 total_predictions[actual_class_name] += 1
@@ -104,7 +122,8 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
             print(report_line)
             analysis_report += report_line + "\n"
 
-    send_email("Photo Analysis Report", analysis_report)
+    if attached_files:
+        send_email("Photo Analysis Report", analysis_report, attached_files)
 
 def load_configuration():
     try:
