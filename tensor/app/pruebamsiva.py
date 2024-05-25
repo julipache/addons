@@ -147,13 +147,17 @@ def load_configuration():
         return 3600  # Default to 1 hour if any error
 
 def main():
-    interval = load_configuration()  # Load the execution interval from configuration
+    interval = 1800  # 30 minutes
     directory_path = '/media/frigate/clips/sala_estar'
     model_path = '/media/mi_modelo_entrenado.h5'
 
     while True:
         predict_directory_images(directory_path, model_path)
-        time.sleep(1800)  # Analyze every minute
+        current_hour = datetime.now().hour
+        if 22 <= current_hour < 23:
+            time.sleep(3600)  # Sleep for 1 hour to ensure only one email is sent in this period
+        else:
+            time.sleep(interval)
 
 if __name__ == "__main__":
     main()
