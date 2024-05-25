@@ -133,7 +133,8 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     full_report = f"Photo Analysis Report for {today}\n\n"
     full_report += detected_classes_report + not_detected_classes_report + analysis_report
 
-    if attached_files:
+    current_hour = datetime.now().hour
+    if attached_files and 22 <= current_hour < 23:
         send_email("Photo Analysis Report", full_report, attached_files)
 
 def load_configuration():
@@ -151,10 +152,8 @@ def main():
     model_path = '/media/mi_modelo_entrenado.h5'
 
     while True:
-        current_hour = datetime.now().hour
-        if 22 <= current_hour < 23:
-            predict_directory_images(directory_path, model_path)
-        time.sleep(interval)
+        predict_directory_images(directory_path, model_path)
+        time.sleep(1800)  # Analyze every minute
 
 if __name__ == "__main__":
     main()
