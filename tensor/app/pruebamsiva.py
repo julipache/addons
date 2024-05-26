@@ -142,7 +142,7 @@ def load_configuration():
 def main():
     interval = load_configuration()  # Load the execution interval from configuration
     directory_path = '/media/frigate/clips/sala_estar'
-    model_path = '/media/mi_modelo_entrenado.h5'
+    model_path = '/media/mi_modelo_entrenado.keras'
     last_sent_email = {"midday": False, "night": False}
 
     while True:
