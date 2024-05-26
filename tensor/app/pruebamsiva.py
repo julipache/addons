@@ -13,7 +13,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from datetime import datetime
 
-def load_and_prepare_image(img_path, target_size=(128, 128)):
+def load_and_prepare_image(img_path, target_size=(224, 224)):  # Cambiar tamaño a (224, 224)
     try:
         img = image.load_img(img_path, target_size=target_size)
         img_array = image.img_to_array(img)
@@ -86,7 +86,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     for filename in os.listdir(directory_path):
         if filename.endswith(".png") or filename.endswith(".jpg"):
             img_path = os.path.join(directory_path, filename)
-            img = load_and_prepare_image(img_path)
+            img = load_and_prepare_image(img_path, target_size=(224, 224))  # Cambiar tamaño a (224, 224)
             if img is None:
                 continue
 
