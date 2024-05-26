@@ -6,9 +6,12 @@ import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from datetime import datetime
 
 def load_and_prepare_image(img_path, target_size=(128, 128)):
     try:
@@ -21,9 +24,9 @@ def load_and_prepare_image(img_path, target_size=(128, 128)):
         print(f"Error processing image {img_path}: {str(e)}")
         return None
 
-def send_email(subject, body):
+def send_email(subject, body, attachments):
     sender_email = "75642e001@smtp-brevo.com"
-    receiver_email = "julioalberto85@gmail.com"  # Reemplaza con el correo del destinatario
+    receiver_email = "julioalberto85@gmail.com"
     password = "8nP5LXfVT1tmvCgW"
 
     message = MIMEMultipart()
@@ -32,6 +35,20 @@ def send_email(subject, body):
     message["Subject"] = subject
 
     message.attach(MIMEText(body, "plain"))
+
+    for file_path in attachments:
+        try:
+            with open(file_path, "rb") as attachment:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                "Content-Disposition",
+                f"attachment; filename= {os.path.basename(file_path)}",
+            )
+            message.attach(part)
+        except Exception as e:
+            print(f"Error attaching file {file_path}: {str(e)}")
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -58,11 +75,13 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
     correct_predictions = {label: 0 for label in class_labels.values()}
     total_predictions = {label: 0 for label in class_labels.values()}
     
-    # Directorio para imágenes dudosas
     doubtful_dir = os.path.join(directory_path, 'dudosos')
     os.makedirs(doubtful_dir, exist_ok=True)
 
     analysis_report = ""
+    attachments = []
+
+    current_date = datetime.now().strftime("%d")
 
     for filename in os.listdir(directory_path):
         if filename.endswith(".png") or filename.endswith(".jpg"):
@@ -81,12 +100,14 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
                 print(report_line)
                 analysis_report += report_line + "\n"
                 shutil.move(img_path, os.path.join(doubtful_dir, filename))
+                attachments.append(os.path.join(doubtful_dir, filename))
                 continue
 
             actual_class_name = filename.split('_')[0]
-            target_folder = os.path.join(directory_path, predicted_class_name)
+            target_folder = os.path.join(directory_path, predicted_class_name, current_date)
             os.makedirs(target_folder, exist_ok=True)
             shutil.move(img_path, os.path.join(target_folder, filename))
+            attachments.append(os.path.join(target_folder, filename))
 
             report_line = f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}"
             print(report_line)
@@ -97,14 +118,17 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=60
                 if predicted_class_name == actual_class_name:
                     correct_predictions[actual_class_name] += 1
 
+    summary = "Summary of detections:\n"
     for class_name in class_labels.values():
         if total_predictions[class_name] > 0:
             accuracy = (correct_predictions[class_name] / total_predictions[class_name]) * 100
-            report_line = f"Accuracy for {class_name}: {accuracy:.2f}% ({correct_predictions[class_name]}/{total_predictions[class_name]})"
-            print(report_line)
-            analysis_report += report_line + "\n"
+            summary += f"{class_name}: {total_predictions[class_name]} times detected with accuracy {accuracy:.2f}%\n"
+        else:
+            summary += f"{class_name}: Not detected\n"
+    print(summary)
+    analysis_report = summary + "\n" + analysis_report
 
-    send_email("Photo Analysis Report", analysis_report)
+    return analysis_report, attachments
 
 def load_configuration():
     try:
@@ -119,9 +143,25 @@ def main():
     interval = load_configuration()  # Load the execution interval from configuration
     directory_path = '/media/frigate/clips/sala_estar'
     model_path = '/media/mi_modelo_entrenado.h5'
+    last_sent_email = {"midday": False, "night": False}
 
     while True:
-        predict_directory_images(directory_path, model_path)
+        current_time = datetime.now()
+        current_hour = current_time.hour
+        
+        if current_hour == 12 and not last_sent_email["midday"]:
+            analysis_report, attachments = predict_directory_images(directory_path, model_path)
+            send_email("Midday Photo Analysis Report", analysis_report, attachments)
+            last_sent_email["midday"] = True
+            last_sent_email["night"] = False
+        elif current_hour == 0 and not last_sent_email["night"]:
+            analysis_report, attachments = predict_directory_images(directory_path, model_path)
+            send_email("Night Photo Analysis Report", analysis_report, attachments)
+            last_sent_email["night"] = True
+            last_sent_email["midday"] = False
+        else:
+            predict_directory_images(directory_path, model_path)
+        
         time.sleep(interval)
 
 if __name__ == "__main__":
