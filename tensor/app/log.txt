@@ -1,0 +1,2 @@
+Error loading configuration: [Errno 2] No such file or directory: '/data/options.json'
+Error loading configuration: [Errno 2] No such file or directory: '/data/options.json'
