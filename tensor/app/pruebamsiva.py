@@ -136,6 +136,16 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=65
                 if predicted_class_name == actual_class_name:
                     correct_predictions[actual_class_name] += 1
 
+    summary = "Summary of detections:\n"
+    for class_name in class_labels.values():
+        if total_predictions[class_name] > 0:
+            accuracy = (correct_predictions[class_name] / total_predictions[class_name]) * 100
+            summary += f"{class_name}: {total_predictions[class_name]} times detected with accuracy {accuracy:.2f}%\n"
+        else:
+            summary += f"{class_name}: Not detected\n"
+    print(summary)
+    update_summary(summary)
+
 def load_configuration():
     try:
         with open('/data/options.json', 'r') as file:
@@ -145,33 +155,21 @@ def load_configuration():
         print(f"Error loading configuration: {str(e)}")
         return 3600  # Default to 1 hour if any error
 
+def send_analysis_email():
+    analysis_report = read_summary()
+    if analysis_report.strip() or daily_attachments:
+        send_email("Photo Analysis Report", analysis_report, daily_attachments)
+    clear_summary()
+    daily_attachments.clear()
+
 def main():
     interval = load_configuration()  # Load the execution interval from configuration
     directory_path = '/media/frigate/clips/sala_estar'
     model_path = '/media/mi_modelo_entrenado.keras'
-    last_sent_email = {"midday": False, "night": False}
 
     while True:
-        current_time = datetime.now()
-        current_hour = current_time.hour
-        
-        if current_hour == 12 and not last_sent_email["midday"]:
-            predict_directory_images(directory_path, model_path)
-            analysis_report = read_summary()
-            send_email("Midday Photo Analysis Report", analysis_report, daily_attachments)
-            last_sent_email["midday"] = True
-            last_sent_email["night"] = False
-        elif current_hour == 17 and not last_sent_email["night"]:
-            predict_directory_images(directory_path, model_path)
-            analysis_report = read_summary()
-            send_email("Night Photo Analysis Report", analysis_report, daily_attachments)
-            last_sent_email["night"] = True
-            last_sent_email["midday"] = False
-            clear_summary()
-            daily_attachments = []
-        else:
-            predict_directory_images(directory_path, model_path)
-        
+        predict_directory_images(directory_path, model_path)
+        send_analysis_email()
         time.sleep(interval)
 
 if __name__ == "__main__":
