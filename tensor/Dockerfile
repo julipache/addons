@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
-    libxrender-dev
+    libxrender-dev \
+    cron
 
 # Instalar dependencias necesarias
 RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless sendgrid
@@ -16,5 +17,9 @@ WORKDIR /app
 # Copiar el directorio de la aplicación
 COPY ./app /app
 
-# Comando para ejecutar el script
-CMD ["python", "script.py"]
+# Copiar y configurar el script de cron
+COPY run_cron.sh /app/run_cron.sh
+RUN chmod +x /app/run_cron.sh
+
+# Comando para ejecutar el script de configuración de cron
+CMD ["/app/run_cron.sh"]

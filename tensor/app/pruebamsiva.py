@@ -171,7 +171,7 @@ def main():
     #model_path = 'D:\\identificaciongatos\\recortads\\mi_modelo_entrenado.keras'
     
     predict_directory_images(directory_path, model_path)
-    send_analysis_email()
+    #send_analysis_email()
 
     
 
