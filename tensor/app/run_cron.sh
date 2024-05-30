@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Crear un archivo crontab
-echo "*/10 * * * * python /app/recortar_y_adivinar.py >> /var/log/cron.log 2>&1" > /etc/cron.d/my_cron
-echo "*/30 * * * * python /app/enviar_email.py >> /var/log/cron.log 2>&1" >> /etc/cron.d/my_cron
+echo "*/10 * * * * /usr/bin/python /app/script.py >> /var/log/cron.log 2>&1" > /etc/cron.d/my_cron
+echo "*/30 * * * * /usr/bin/python /app/enviar_email.py >> /var/log/cron.log 2>&1" >> /etc/cron.d/my_cron
 
 # Aplicar permisos correctos
 chmod 0644 /etc/cron.d/my_cron
@@ -18,3 +18,4 @@ cron
 
 # Mantener el contenedor en ejecución
 tail -f /var/log/cron.log
+	
