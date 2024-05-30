@@ -20,8 +20,7 @@ WORKDIR /app
 # Copiar el directorio de la aplicación
 COPY ./app /app
 
-# Copiar y configurar el script de cron
-COPY run_cron.sh /app/run_cron.sh
+
 RUN chmod +x /app/run_cron.sh
 
 # Comando para ejecutar el script de configuración de cron
