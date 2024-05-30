@@ -164,13 +164,16 @@ def send_analysis_email():
 
 def main():
     interval = load_configuration()  # Load the execution interval from configuration
-    directory_path = '/media/frigate/clips/sala_estar'
-    model_path = '/media/mi_modelo_entrenado.keras'
+    directory_path = '/media/frigate/clips/sala_estar_recortado'
+    #directory_path = 'D:\\identificaciongatos\\recortads\\analizar_recortado'
 
-    while True:
-        predict_directory_images(directory_path, model_path)
-        send_analysis_email()
-        time.sleep(interval)
+    model_path = '/media/mi_modelo_entrenado.keras'
+    #model_path = 'D:\\identificaciongatos\\recortads\\mi_modelo_entrenado.keras'
+    
+    predict_directory_images(directory_path, model_path)
+    send_analysis_email()
+
+    
 
 if __name__ == "__main__":
     main()

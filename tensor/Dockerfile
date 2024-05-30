@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev
 
 # Instalar dependencias necesarias
-RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless
+RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless sendgrid
 
 # Establecer el directorio de trabajo
 WORKDIR /app
@@ -17,4 +17,4 @@ WORKDIR /app
 COPY ./app /app
 
 # Comando para ejecutar el script
-CMD ["python", "pruebamsiva.py"]
+CMD ["python", "script.py"]
