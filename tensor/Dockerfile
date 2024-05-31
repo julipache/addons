@@ -21,7 +21,6 @@ WORKDIR /app
 COPY ./app /app
 
 
-RUN chmod +x /app/run_cron.sh
 
 # Comando para ejecutar el script de configuración de cron
-CMD ["/app/run_cron.sh"]
+CMD ["python", "script.py"]

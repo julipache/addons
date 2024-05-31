@@ -16,6 +16,8 @@ if __name__ == "__main__":
 
         # Ejecutar el script de identificación de gatos
         run_script('pruebamsiva.py')
+        
+        run_script('enviar_email.py')
 
         # Esperar un tiempo antes de la próxima ejecución (ejemplo: cada hora)
         time.sleep(3600)  # 3600 segundos = 1 hora
