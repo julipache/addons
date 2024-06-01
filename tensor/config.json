@@ -1,6 +1,6 @@
 {
 	"name": "tensor",
-	"version": "5.7",
+	"version": "6.0",
 
 	"slug": "image_analyzer",
 	"description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
