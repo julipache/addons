@@ -12,6 +12,13 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from datetime import datetime
+import logging
+
+# Configurar el logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
+    logging.FileHandler("script_execution.log"),
+    logging.StreamHandler()
+])
 
 # Variables globales para mantener el registro de las capturas y el resumen
 daily_attachments = []
@@ -26,7 +33,7 @@ def load_and_prepare_image(img_path, target_size=(224, 224)):
         img_array = img_array / 255.0
         return img_array
     except Exception as e:
-        print(f"Error processing image {img_path}: {str(e)}")
+        logging.error(f"Error processing image {img_path}: {str(e)}")
         return None
 
 def send_email(subject, body, attachments):
@@ -53,7 +60,7 @@ def send_email(subject, body, attachments):
             )
             message.attach(part)
         except Exception as e:
-            print(f"Error attaching file {file_path}: {str(e)}")
+            logging.error(f"Error attaching file {file_path}: {str(e)}")
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -61,9 +68,9 @@ def send_email(subject, body, attachments):
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
         server.close()
-        print("Email sent successfully")
+        logging.info("Email sent successfully")
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logging.error(f"Error sending email: {str(e)}")
 
 def update_summary(report_line):
     with open(summary_file_path, "a") as f:
@@ -83,14 +90,15 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=65
     global daily_attachments
 
     if not os.path.exists(directory_path):
-        print(f"Directory does not exist: {directory_path}")
+        logging.error(f"Directory does not exist: {directory_path}")
         return
 
     if not os.path.exists(model_path):
-        print(f"Model file not found at {model_path}")
+        logging.error(f"Model file not found at {model_path}")
         return
 
     model = load_model(model_path)
+    logging.info("Model loaded successfully")
     class_labels = {0: 'coco', 1: 'pina', 2: 'pollo', 3: 'ray', 4: 'snape'}  # Ajustar según tus clases
     
     correct_predictions = {label: 0 for label in class_labels.values()}
@@ -113,9 +121,11 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=65
             predicted_class_name = class_labels[predicted_class_index[0]]
             confidence = np.max(predictions) * 100
 
+            logging.info(f"Processed {filename} - Predicted: {predicted_class_name}, Confidence: {confidence:.2f}%")
+
             if confidence < confidence_threshold:
                 report_line = f"File: {filename} - Prediction confidence ({confidence:.2f}%) below threshold, moved to 'dudosos'."
-                print(report_line)
+                logging.info(report_line)
                 update_summary(report_line)
                 shutil.move(img_path, os.path.join(doubtful_dir, filename))
                 daily_attachments.append(os.path.join(doubtful_dir, filename))
@@ -128,7 +138,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=65
             daily_attachments.append(os.path.join(target_folder, filename))
 
             report_line = f"File: {filename} - Predicted: {predicted_class_name} ({confidence:.2f}%), Actual: {actual_class_name}"
-            print(report_line)
+            logging.info(report_line)
             update_summary(report_line)
 
             if actual_class_name in class_labels.values():
@@ -143,7 +153,7 @@ def predict_directory_images(directory_path, model_path, confidence_threshold=65
             summary += f"{class_name}: {total_predictions[class_name]} times detected with accuracy {accuracy:.2f}%\n"
         else:
             summary += f"{class_name}: Not detected\n"
-    print(summary)
+    logging.info(summary)
     update_summary(summary)
 
 def load_configuration():
@@ -152,7 +162,7 @@ def load_configuration():
             data = json.load(file)
             return data['interval']
     except Exception as e:
-        print(f"Error loading configuration: {str(e)}")
+        logging.error(f"Error loading configuration: {str(e)}")
         return 3600  # Default to 1 hour if any error
 
 def send_analysis_email():
@@ -165,15 +175,19 @@ def send_analysis_email():
 def main():
     interval = load_configuration()  # Load the execution interval from configuration
     directory_path = '/media/frigate/clips/sala_estar_recortado'
-    #directory_path = 'D:\\identificaciongatos\\recortads\\analizar_recortado'
-
     model_path = '/media/mi_modelo_entrenado.keras'
-    #model_path = 'D:\\identificaciongatos\\recortads\\mi_modelo_entrenado.keras'
     
-    predict_directory_images(directory_path, model_path)
-    #send_analysis_email()
+    while True:
+        logging.info("Starting prediction cycle")
+        predict_directory_images(directory_path, model_path)
+        logging.info("Prediction cycle completed")
 
-    
+        logging.info("Starting email sending cycle")
+        send_analysis_email()
+        logging.info("Email sending cycle completed")
+
+        logging.info(f"Waiting for the next cycle in {interval} seconds")
+        time.sleep(interval)
 
 if __name__ == "__main__":
     main()
