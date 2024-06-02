@@ -108,7 +108,8 @@ if __name__ == "__main__":
     
     #model_path = '/media/mi_modelo_entrenado.keras'
     
-    yolo_weights = 'yolov3.weights'  # Path to YOLO weights file
-    yolo_cfg = 'yolov3.cfg'          # Path to YOLO config file
-    yolo_names = 'coco.names'        # Path to file with class names
+    yolo_weights = '/media/yolov3.weights'  # Path to YOLO weights file
+
+    yolo_cfg = '/media/yolov3.cfg'          # Path to YOLO config file
+    yolo_names = '/media/coco.names'        # Path to file with class names
     detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_cfg, yolo_names)
