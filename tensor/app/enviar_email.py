@@ -1,5 +1,3 @@
-# enviar_email.py
-
 import os
 import shutil
 import smtplib
@@ -7,7 +5,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from datetime import datetime
 
 # Configuración de correo electrónico
 def send_email(subject, body, attachments):
@@ -21,6 +18,7 @@ def send_email(subject, body, attachments):
     message["Subject"] = subject
 
     message.attach(MIMEText(body, "plain"))
+    print(f"Preparing email with subject: {subject}")
 
     for file_path in attachments:
         try:
@@ -33,6 +31,7 @@ def send_email(subject, body, attachments):
                 f"attachment; filename= {os.path.basename(file_path)}",
             )
             message.attach(part)
+            print(f"Attached file: {file_path}")
         except Exception as e:
             print(f"Error attaching file {file_path}: {str(e)}")
 
@@ -52,17 +51,20 @@ def send_email(subject, body, attachments):
 def process_and_send_images(directory_path, sent_directory):
     new_images = []
     print(f"Checking directory: {directory_path} for new images...")
-    for filename in os.listdir(directory_path):
-        if filename.endswith(".png") or filename.endswith(".jpg"):
-            new_images.append(os.path.join(directory_path, filename))
+    
+    for root, dirs, files in os.walk(directory_path):
+        for filename in files:
+            if filename.endswith(".png") or filename.endswith(".jpg"):
+                new_images.append(os.path.join(root, filename))
 
     if new_images:
         print(f"Found {len(new_images)} new images. Preparing to send...")
         send_email("New Image Analysis Report", "See attached images.", new_images)
         for img_path in new_images:
-            base, ext = os.path.splitext(img_path)
-            sent_img_path = f"{base}_enviado{ext}"
-            shutil.move(img_path, os.path.join(sent_directory, os.path.basename(sent_img_path)))
+            rel_path = os.path.relpath(img_path, directory_path)
+            sent_img_path = os.path.join(sent_directory, rel_path)
+            os.makedirs(os.path.dirname(sent_img_path), exist_ok=True)
+            shutil.move(img_path, sent_img_path)
             print(f"Moved {img_path} to {sent_img_path}")
     else:
         print("No new images found to send.")
