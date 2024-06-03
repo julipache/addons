@@ -43,8 +43,10 @@ def send_email(subject, body, attachments):
         server.sendmail(sender_email, receiver_email, message.as_string())
         server.close()
         print("Email sent successfully")
+    except smtplib.SMTPException as e:
+        print(f"SMTP error sending email: {str(e)}")
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        print(f"General error sending email: {str(e)}")
 
 # Enviar imágenes nuevas por email y moverlas a la carpeta "enviadas"
 def process_and_send_images(directory_path, sent_directory):
@@ -60,13 +62,21 @@ def process_and_send_images(directory_path, sent_directory):
             sent_img_path = f"{base}_enviado{ext}"
             shutil.move(img_path, os.path.join(sent_directory, os.path.basename(sent_img_path)))
             print(f"Moved {img_path} to {sent_img_path}")
+    else:
+        print("No new images found to send.")
 
 if __name__ == "__main__":
     directory_path = '/media/frigate/clips/sala_estar_recortado'
     sent_directory = '/media/frigate/clips/sala_estar_recortado_enviado'
     
-   
     if not os.path.exists(sent_directory):
         os.makedirs(sent_directory)
     
+    # Probar envío de correo simple
+    try:
+        send_email("Test Email", "This is a test email without attachments.", [])
+    except Exception as e:
+        print(f"Error during test email: {str(e)}")
+    
+    # Procesar y enviar imágenes
     process_and_send_images(directory_path, sent_directory)
