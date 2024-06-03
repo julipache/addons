@@ -183,7 +183,7 @@ def main():
         logging.info("Prediction cycle completed")
 
         logging.info("Starting email sending cycle")
-        send_analysis_email()
+        #send_analysis_email()
         logging.info("Email sending cycle completed")
 
         logging.info(f"Waiting for the next cycle in {interval} seconds")
