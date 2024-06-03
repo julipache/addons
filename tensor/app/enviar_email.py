@@ -51,11 +51,13 @@ def send_email(subject, body, attachments):
 # Enviar imágenes nuevas por email y moverlas a la carpeta "enviadas"
 def process_and_send_images(directory_path, sent_directory):
     new_images = []
+    print(f"Checking directory: {directory_path} for new images...")
     for filename in os.listdir(directory_path):
         if filename.endswith(".png") or filename.endswith(".jpg"):
             new_images.append(os.path.join(directory_path, filename))
 
     if new_images:
+        print(f"Found {len(new_images)} new images. Preparing to send...")
         send_email("New Image Analysis Report", "See attached images.", new_images)
         for img_path in new_images:
             base, ext = os.path.splitext(img_path)
