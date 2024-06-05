@@ -24,18 +24,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 daily_attachments = []
 summary_file_path = "daily_summary.txt"
 
-def load_and_prepare_image(img_path, target_size=(224, 224)):
-    try:
-        img = image.load_img(img_path, target_size=target_size)
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
-        img_array = preprocess_input(img_array)
-        img_array = img_array / 255.0
-        return img_array
-    except Exception as e:
-        logging.error(f"Error processing image {img_path}: {str(e)}")
-        return None
 
+
+# Configuración de correo electrónico
 def send_email(subject, body, attachments):
     sender_email = "75642e001@smtp-brevo.com"
     receiver_email = "julioalberto85@gmail.com"
@@ -47,6 +38,7 @@ def send_email(subject, body, attachments):
     message["Subject"] = subject
 
     message.attach(MIMEText(body, "plain"))
+    print(f"Preparing email with subject: {subject}")
 
     for file_path in attachments:
         try:
@@ -59,8 +51,9 @@ def send_email(subject, body, attachments):
                 f"attachment; filename= {os.path.basename(file_path)}",
             )
             message.attach(part)
+            print(f"Attached file: {file_path}")
         except Exception as e:
-            logging.error(f"Error attaching file {file_path}: {str(e)}")
+            print(f"Error attaching file {file_path}: {str(e)}")
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -68,9 +61,47 @@ def send_email(subject, body, attachments):
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
         server.close()
-        logging.info("Email sent successfully")
+        print("Email sent successfully")
+    except smtplib.SMTPException as e:
+        print(f"SMTP error sending email: {str(e)}")
     except Exception as e:
-        logging.error(f"Error sending email: {str(e)}")
+        print(f"General error sending email: {str(e)}")
+
+# Enviar imágenes nuevas por email y moverlas a la carpeta "enviadas"
+def process_and_send_images(directory_path, sent_directory):
+    new_images = []
+    print(f"Checking directory: {directory_path} for new images...")
+    
+    for root, dirs, files in os.walk(directory_path):
+        for filename in files:
+            if filename.endswith(".png") or filename.endswith(".jpg"):
+                new_images.append(os.path.join(root, filename))
+
+    if new_images:
+        print(f"Found {len(new_images)} new images. Preparing to send...")
+        send_email("New Image Analysis Report", "See attached images.", new_images)
+        for img_path in new_images:
+            rel_path = os.path.relpath(img_path, directory_path)
+            sent_img_path = os.path.join(sent_directory, rel_path)
+            os.makedirs(os.path.dirname(sent_img_path), exist_ok=True)
+            shutil.move(img_path, sent_img_path)
+            print(f"Moved {img_path} to {sent_img_path}")
+    else:
+        print("No new images found to send.")
+
+def load_and_prepare_image(img_path, target_size=(224, 224)):
+    try:
+        img = image.load_img(img_path, target_size=target_size)
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = preprocess_input(img_array)
+        img_array = img_array / 255.0
+        return img_array
+    except Exception as e:
+        logging.error(f"Error processing image {img_path}: {str(e)}")
+        return None
+
+
 
 def update_summary(report_line):
     with open(summary_file_path, "a") as f:
@@ -177,17 +208,25 @@ def main():
     directory_path = '/media/frigate/clips/sala_estar_recortado'
     model_path = '/media/mi_modelo_entrenado.keras'
     
-    while True:
-        logging.info("Starting prediction cycle")
-        predict_directory_images(directory_path, model_path)
-        logging.info("Prediction cycle completed")
+    
+    logging.info("Starting prediction cycle")
+    predict_directory_images(directory_path, model_path)
+    logging.info("Prediction cycle completed")
 
-        logging.info("Starting email sending cycle")
-        #send_analysis_email()
-        logging.info("Email sending cycle completed")
+    logging.info("Starting email sending cycle")
+    #send_analysis_email()
+    logging.info("Email sending cycle completed")
+    
+        
+    sent_directory = '/media/frigate/clips/sala_estar_recortado_enviado'
 
-        logging.info(f"Waiting for the next cycle in {interval} seconds")
-        time.sleep(interval)
+    if not os.path.exists(sent_directory):
+        os.makedirs(sent_directory)
+
+    # Procesar y enviar imágenes
+    process_and_send_images(directory_path, sent_directory)
+
+        
 
 if __name__ == "__main__":
     main()
