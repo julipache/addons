@@ -90,9 +90,12 @@ def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_c
                         cv2.imwrite(output_path, crop_img)
                         logging.info(f"Saved cropped image to {output_path}")
 
-                        # Dibujar un cuadro alrededor del gato detectado y guardar la imagen
+                        # Dibujar un cuadro alrededor del gato detectado y guardar la imagen en la carpeta "originales"
                         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        detection_output_path = os.path.join(output_subdir, f"{base}_detection{ext}")
+                        originals_dir = os.path.join(output_directory, 'originales', relative_path)
+                        if not os.path.exists(originals_dir):
+                            os.makedirs(originals_dir)
+                        detection_output_path = os.path.join(originals_dir, f"{base}_detection{ext}")
                         cv2.imwrite(detection_output_path, img)
                         logging.info(f"Saved detection image to {detection_output_path}")
 
