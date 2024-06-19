@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "7.2",
+	"version": "8.0",
 
 	"slug": "image_analyzer",
 	"description": "A Home Assistant add-on that analyzes images and classifies them using a visorFlow model.",
