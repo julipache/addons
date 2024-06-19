@@ -1,8 +1,11 @@
 {
   "name": "Visor",
   "version": "1.0",
+
+	"slug": "image_analyzer",
+	"description": "A Home Assistant add-on that analyzes images and classifies them using a TensorFlow model.",
+	"uart": true,
   "slug": "visor",
-  "description": "Visor de cámaras RTSP",
   "arch": [
     "aarch64",
     "amd64",
