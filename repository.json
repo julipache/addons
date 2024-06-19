@@ -1,35 +1,5 @@
 {
-  "name": "My Add-ons Repository",
-  "url": "https://github.com/tu_usuario/tu_repositorio",
-  "maintainer": "Jupache",
-  "addons": [
-    {
-      "name": "Tensor",
-      "slug": "tensor",
-      "description": "Description of tensor addon",
-      "version": "1.0",
-      "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
-      "startup": "application",
-      "boot": "auto",
-      "homeassistant": "0.110.0",
-      "host_network": true,
-      "options": {},
-      "schema": {}
-    },
-    {
-      "name": "RTSP Viewer",
-      "slug": "visor",
-      "description": "Visor de cámaras RTSP",
-      "version": "1.0",
-      "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
-      "startup": "application",
-      "boot": "auto",
-      "options": {
-        "rtsp_url": "rtsp://usuario:contraseña@ip_del_dispositivo:puerto/stream"
-      },
-      "schema": {
-        "rtsp_url": "str"
-      }
-    }
-  ]
+  "name": "Jupache Assistant Add-ons",
+  "url": "https://github.com/julipache/addons",
+  "maintainer": "julipache <your-email@example.com>"
 }
