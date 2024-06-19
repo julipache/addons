@@ -9,7 +9,7 @@
     "5000/tcp": 5000
   },
   "options": {
-    "rtsp_url": "rtsp://jupache:Pip0l3iras@192.168.1.43/ch0_0.h264"
+    "rtsp_url": "rtsp://jupache:PassDeMiCamara2025@192.168.1.43/ch0_0.h264"
   },
   "schema": {
     "rtsp_url": "str"
