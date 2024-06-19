@@ -22,4 +22,5 @@
     "rtsp_url": "str"
   },
   "url": "https://github.com/julipache/addons/tree/main/visor"
+	"startup": "application",
 }
