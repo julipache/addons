@@ -1,30 +1,33 @@
+from flask import Flask, Response
 import cv2
+import os
 
-def main(rtsp_url):
-    # Abre la conexión RTSP
+app = Flask(__name__)
+
+def get_rtsp_url():
+    return os.getenv('RTSP_URL')
+
+def generate_frames(rtsp_url):
     cap = cv2.VideoCapture(rtsp_url)
-
     if not cap.isOpened():
-        print("Error: No se puede abrir la transmisión RTSP.")
-        return
+        raise ValueError("Error: No se puede abrir la transmisión RTSP.")
 
     while True:
         ret, frame = cap.read()
-
         if not ret:
-            print("Error: No se puede recibir frame (stream end?). Saliendo ...")
             break
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-        # Muestra el frame
-        cv2.imshow('RTSP Viewer', frame)
-
-        if cv2.waitKey(1) == ord('q'):
-            break
-
-    # Libera los recursos
     cap.release()
-    cv2.destroyAllWindows()
+
+@app.route('/video_feed')
+def video_feed():
+    rtsp_url = get_rtsp_url()
+    return Response(generate_frames(rtsp_url),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
-    rtsp_url = "rtsp://jupache:Pip0l3iras@192.168.1.43/ch0_0.h264"
-    main(rtsp_url)
+    app.run(host='0.0.0.0', port=5000)

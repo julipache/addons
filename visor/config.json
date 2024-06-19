@@ -1,0 +1,17 @@
+{
+  "name": "RTSP Viewer",
+  "version": "1.0",
+  "slug": "rtsp_viewer",
+  "description": "Visor de cámaras RTSP",
+  "startup": "application",
+  "boot": "auto",
+  "ports": {
+    "5000/tcp": 5000
+  },
+  "options": {
+    "rtsp_url": "rtsp://jupache:Pip0l3iras@192.168.1.43/ch0_0.h264"
+  },
+  "schema": {
+    "rtsp_url": "str"
+  }
+}
