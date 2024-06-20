@@ -1,8 +1,9 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, Response
 import os
 import threading
 import subprocess
-import websocket_server
+import websockets
+import asyncio
 
 app = Flask(__name__)
 
@@ -39,7 +40,7 @@ html_template = """
 def index():
     return render_template_string(html_template)
 
-def start_stream(rtsp_url, ws_port):
+async def stream_rtsp(rtsp_url, websocket):
     command = [
         'ffmpeg',
         '-i', rtsp_url,
@@ -48,23 +49,29 @@ def start_stream(rtsp_url, ws_port):
         '-bf', '0',
         '-q', '0',
         '-r', '30',
-        'http://127.0.0.1:' + str(ws_port)
+        '-'
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    while True:
+        frame = process.stdout.read(1024)
+        if not frame:
+            break
+        await websocket.send(frame)
+    process.stdout.close()
     process.wait()
 
-def run_websocket_server(port):
-    server = websocket_server.WebSocketServer('', port)
-    server.run_forever()
+async def ws_handler(websocket, path):
+    rtsp_url = os.getenv('RTSP_URL_1') if path == '/video_feed_1' else os.getenv('RTSP_URL_2')
+    await stream_rtsp(rtsp_url, websocket)
+
+def start_ws_server():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    server = websockets.serve(ws_handler, '0.0.0.0', 8081)
+    loop.run_until_complete(server)
+    loop.run_forever()
 
 if __name__ == "__main__":
-    rtsp_url_1 = os.getenv('RTSP_URL_1')
-    rtsp_url_2 = os.getenv('RTSP_URL_2')
-
-    threading.Thread(target=run_websocket_server, args=(8081,)).start()
-    threading.Thread(target=run_websocket_server, args=(8082,)).start()
-
-    threading.Thread(target=start_stream, args=(rtsp_url_1, 8081)).start()
-    threading.Thread(target=start_stream, args=(rtsp_url_2, 8082)).start()
-
+    threading.Thread(target=start_ws_server).start()
+    threading.Thread(target=start_ws_server, args=(8082,)).start()
     app.run(host='0.0.0.0', port=8099)

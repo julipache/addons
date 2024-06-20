@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y ffmpeg
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # Instalar dependencias necesarias
-RUN pip install flask websocket-server
+RUN pip install flask websockets
 
 # Establecer el directorio de trabajo
 WORKDIR /app
