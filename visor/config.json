@@ -48,5 +48,5 @@
   "schema": {
     "rtsp_url_1": "str",
     "rtsp_url_2": "str"
-  },
+  }
 }
