@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "8.1",
+	"version": "8.2",
 
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
@@ -28,12 +28,7 @@
 		"media:rw"
 	],
 	"ports": {
-		"8485/tcp": 8485,
-		"8099/tcp": null
-	},
-	"ports_description": {
-		"8485/tcp": "Socat tcp-listen port",
-		"8099/tcp": "Frontend tcp-listen port"
+		"5000/tcp": 5000
 	},
 	"options": {
 		"data_path": "/config/visor",
