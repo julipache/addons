@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "8.2",
+	"version": "8.3",
 
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
@@ -28,7 +28,7 @@
 		"media:rw"
 	],
 	"ports": {
-		"5000/tcp": 5000
+		"5100/tcp": 5100
 	},
 	"options": {
 		"data_path": "/config/visor",
