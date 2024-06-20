@@ -1,6 +1,8 @@
-from flask import Flask, render_template_string, Response
-import subprocess
+from flask import Flask, render_template_string, request
 import os
+import threading
+import subprocess
+import websocket_server
 
 app = Flask(__name__)
 
@@ -22,10 +24,10 @@ html_template = """
         <!-- Puedes añadir más streams aquí -->
     </div>
     <script>
-        const player1 = new JSMpeg.Player('ws://' + window.location.host + '/video_feed_1', {
+        const player1 = new JSMpeg.Player('ws://' + window.location.hostname + ':8081', {
             canvas: document.getElementById('videoCanvas1')
         });
-        const player2 = new JSMpeg.Player('ws://' + window.location.host + '/video_feed_2', {
+        const player2 = new JSMpeg.Player('ws://' + window.location.hostname + ':8082', {
             canvas: document.getElementById('videoCanvas2')
         });
     </script>
@@ -37,7 +39,7 @@ html_template = """
 def index():
     return render_template_string(html_template)
 
-def generate_frames(rtsp_url):
+def start_stream(rtsp_url, ws_port):
     command = [
         'ffmpeg',
         '-i', rtsp_url,
@@ -45,24 +47,24 @@ def generate_frames(rtsp_url):
         '-codec:v', 'mpeg1video',
         '-bf', '0',
         '-q', '0',
-        '-'
+        '-r', '30',
+        'http://127.0.0.1:' + str(ws_port)
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while True:
-        frame = process.stdout.read(1024)
-        if not frame:
-            break
-        yield frame
+    process.wait()
 
-@app.route('/video_feed_1')
-def video_feed_1():
-    rtsp_url_1 = os.getenv('RTSP_URL_1')
-    return Response(generate_frames(rtsp_url_1), mimetype='video/mp2t')
-
-@app.route('/video_feed_2')
-def video_feed_2():
-    rtsp_url_2 = os.getenv('RTSP_URL_2')
-    return Response(generate_frames(rtsp_url_2), mimetype='video/mp2t')
+def run_websocket_server(port):
+    server = websocket_server.WebSocketServer('', port)
+    server.run_forever()
 
 if __name__ == "__main__":
+    rtsp_url_1 = os.getenv('RTSP_URL_1')
+    rtsp_url_2 = os.getenv('RTSP_URL_2')
+
+    threading.Thread(target=run_websocket_server, args=(8081,)).start()
+    threading.Thread(target=run_websocket_server, args=(8082,)).start()
+
+    threading.Thread(target=start_stream, args=(rtsp_url_1, 8081)).start()
+    threading.Thread(target=start_stream, args=(rtsp_url_2, 8082)).start()
+
     app.run(host='0.0.0.0', port=8099)
