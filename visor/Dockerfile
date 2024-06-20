@@ -1,13 +1,26 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-# Copia el script en el contenedor
-COPY visor.py /app/visor.py
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    cron
 
-# Instala las dependencias
-RUN pip install flask opencv-python
+# Crear un enlace simbólico de python a python3
+RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# Define el puerto en el que se ejecutará la aplicación
-EXPOSE 5000
+# Instalar dependencias necesarias
+RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless sendgrid flask
 
-# Comando por defecto para ejecutar el script
-CMD ["python", "/app/visor.py"]
+# Establecer el directorio de trabajo
+WORKDIR /app
+
+# Copiar el directorio de la aplicación
+COPY ./app /app
+
+
+
+# Comando para ejecutar el script de configuración de cron
+CMD ["python", "visor.py"]
