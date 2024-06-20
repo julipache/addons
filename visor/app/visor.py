@@ -17,7 +17,6 @@ html_template = """
     <h1>RTSP Cameras</h1>
     <div>
         <img src="/api/hassio_ingress/video_feed_1" width="640" height="480">
-        <img src="/api/hassio_ingress/video_feed_2" width="640" height="480">
         <!-- Puedes añadir más streams aquí -->
     </div>
 </body>
@@ -28,7 +27,6 @@ def get_rtsp_url(cam_id):
     # Puedes definir múltiples URLs RTSP aquí
     rtsp_urls = {
         "1": os.getenv('RTSP_URL_1'),
-        "2": os.getenv('RTSP_URL_2')
     }
     return rtsp_urls.get(cam_id)
 
