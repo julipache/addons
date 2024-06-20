@@ -16,8 +16,8 @@ html_template = """
 <body>
     <h1>RTSP Cameras</h1>
     <div>
-        <img src="/video_feed_1" width="640" height="480">
-        <img src="/video_feed_2" width="640" height="480">
+        <img src="/api/hassio_ingress/video_feed_1" width="640" height="480">
+        <img src="/api/hassio_ingress/video_feed_2" width="640" height="480">
         <!-- Puedes añadir más streams aquí -->
     </div>
 </body>
@@ -59,4 +59,4 @@ def video_feed(cam_id):
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5100)
+    app.run(host='0.0.0.0', port=8099)

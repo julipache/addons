@@ -22,13 +22,14 @@
 	"ingress": true,
 	"timeout": 30,
 	"panel_icon": "mdi:zigbee",
+	"ingress_port": 8099,
 	"map": [
 		"share:rw",
 		"config:rw",
 		"media:rw"
 	],
 	"ports": {
-		"5100/tcp": 5100
+		"8099/tcp": 8099
 	},
 	"options": {
 		"data_path": "/config/visor",
