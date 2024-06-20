@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "8.4",
+	"version": "8.5",
 
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
@@ -32,6 +32,8 @@
 		"8099/tcp": 8099
 	},
 	"options": {
+    "rtsp_url_1": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
+    "rtsp_url_2": "rtsp://usuario:contraseña@ip_del_dispositivo:puerto/stream2"
 		"data_path": "/config/visor",
 		"interval": 3600,
 		"socat": {
