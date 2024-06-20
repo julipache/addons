@@ -6,7 +6,11 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    cron
+    cron \
+	ffmpeg
+	
+	
+
 
 # Crear un enlace simbólico de python a python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
