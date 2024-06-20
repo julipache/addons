@@ -16,7 +16,8 @@ html_template = """
 <body>
     <h1>RTSP Cameras</h1>
     <div>
-        <img src="/api/hassio_ingress/video_feed_1" width="640" height="480">
+        <img src="/video_feed_1" width="640" height="480">
+        <img src="/video_feed_2" width="640" height="480">
         <!-- Puedes añadir más streams aquí -->
     </div>
 </body>
@@ -27,17 +28,22 @@ def get_rtsp_url(cam_id):
     # Puedes definir múltiples URLs RTSP aquí
     rtsp_urls = {
         "1": os.getenv('RTSP_URL_1'),
+        "2": os.getenv('RTSP_URL_2')
     }
-    return rtsp_urls.get(cam_id)
+    rtsp_url = rtsp_urls.get(cam_id)
+    if not rtsp_url:
+        raise ValueError(f"RTSP URL for camera {cam_id} is not set.")
+    return rtsp_url
 
 def generate_frames(rtsp_url):
     cap = cv2.VideoCapture(rtsp_url)
     if not cap.isOpened():
-        raise ValueError("Error: No se puede abrir la transmisión RTSP.")
+        raise ValueError(f"Error: No se puede abrir la transmisión RTSP. URL: {rtsp_url}")
 
     while True:
         ret, frame = cap.read()
         if not ret:
+            print("Error: No se puede recibir frame (stream end?).")
             break
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
@@ -52,9 +58,12 @@ def index():
 
 @app.route('/video_feed_<cam_id>')
 def video_feed(cam_id):
-    rtsp_url = get_rtsp_url(cam_id)
-    return Response(generate_frames(rtsp_url),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    try:
+        rtsp_url = get_rtsp_url(cam_id)
+        return Response(generate_frames(rtsp_url),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
+    except Exception as e:
+        return str(e), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8099)
