@@ -1,5 +1,4 @@
-from flask import Flask, Response, render_template_string
-import cv2
+from flask import Flask, render_template_string
 import os
 
 app = Flask(__name__)
@@ -16,54 +15,25 @@ html_template = """
 <body>
     <h1>RTSP Cameras</h1>
     <div>
-        <img src="/video_feed_1" width="640" height="480">
-        <img src="/video_feed_2" width="640" height="480">
+        <video width="640" height="480" controls>
+            <source src="{{ rtsp_url_1 }}" type="application/x-rtsp">
+            Your browser does not support the RTSP stream.
+        </video>
+        <video width="640" height="480" controls>
+            <source src="{{ rtsp_url_2 }}" type="application/x-rtsp">
+            Your browser does not support the RTSP stream.
+        </video>
         <!-- Puedes añadir más streams aquí -->
     </div>
 </body>
 </html>
 """
 
-def get_rtsp_url(cam_id):
-    # Puedes definir múltiples URLs RTSP aquí
-    rtsp_urls = {
-        "1": os.getenv('RTSP_URL_1'),
-        "2": os.getenv('RTSP_URL_2')
-    }
-    rtsp_url = rtsp_urls.get(cam_id)
-    if not rtsp_url:
-        raise ValueError(f"RTSP URL for camera {cam_id} is not set.")
-    return rtsp_url
-
-def generate_frames(rtsp_url):
-    cap = cv2.VideoCapture(rtsp_url)
-    if not cap.isOpened():
-        raise ValueError(f"Error: No se puede abrir la transmisión RTSP. URL: {rtsp_url}")
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: No se puede recibir frame (stream end?).")
-            break
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-    cap.release()
-
 @app.route('/')
 def index():
-    return render_template_string(html_template)
-
-@app.route('/video_feed_<cam_id>')
-def video_feed(cam_id):
-    try:
-        rtsp_url = get_rtsp_url(cam_id)
-        return Response(generate_frames(rtsp_url),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
-    except Exception as e:
-        return str(e), 500
+    rtsp_url_1 = os.getenv('RTSP_URL_1')
+    rtsp_url_2 = os.getenv('RTSP_URL_2')
+    return render_template_string(html_template, rtsp_url_1=rtsp_url_1, rtsp_url_2=rtsp_url_2)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8099)
