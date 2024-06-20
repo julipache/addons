@@ -1,11 +1,36 @@
-from flask import Flask, Response
+from flask import Flask, Response, render_template_string
 import cv2
 import os
 
 app = Flask(__name__)
 
-def get_rtsp_url():
-    return os.getenv('RTSP_URL')
+# Template HTML para mostrar las cámaras
+html_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTSP Cameras</title>
+</head>
+<body>
+    <h1>RTSP Cameras</h1>
+    <div>
+        <img src="/video_feed_1" width="640" height="480">
+        <img src="/video_feed_2" width="640" height="480">
+        <!-- Puedes añadir más streams aquí -->
+    </div>
+</body>
+</html>
+"""
+
+def get_rtsp_url(cam_id):
+    # Puedes definir múltiples URLs RTSP aquí
+    rtsp_urls = {
+        "1": os.getenv('RTSP_URL_1'),
+        "2": os.getenv('RTSP_URL_2')
+    }
+    return rtsp_urls.get(cam_id)
 
 def generate_frames(rtsp_url):
     cap = cv2.VideoCapture(rtsp_url)
@@ -23,9 +48,13 @@ def generate_frames(rtsp_url):
 
     cap.release()
 
-@app.route('/video_feed')
-def video_feed():
-    rtsp_url = get_rtsp_url()
+@app.route('/')
+def index():
+    return render_template_string(html_template)
+
+@app.route('/video_feed_<cam_id>')
+def video_feed(cam_id):
+    rtsp_url = get_rtsp_url(cam_id)
     return Response(generate_frames(rtsp_url),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 

@@ -20,6 +20,7 @@ WORKDIR /app
 # Copiar el directorio de la aplicación
 COPY ./app /app
 
+EXPOSE 5000
 
 
 # Comando para ejecutar el script de configuración de cron
