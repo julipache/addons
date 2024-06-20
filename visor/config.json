@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "9.0",
+	"version": "8.9",
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
@@ -30,10 +30,21 @@
 	"ports": {
 		"8099/tcp": 8099
 	},
-  "options": {
-    "rtsp_url_1": "rtsp://usuario:contraseña@ip_del_dispositivo:puerto/stream1",
-    "rtsp_url_2": "rtsp://usuario:contraseña@ip_del_dispositivo:puerto/stream2"
-  },
+	"options": {
+    "rtsp_url_1": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
+	"rtsp_url_2": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
+		"data_path": "/config/visor",
+		"interval": 3600,
+		"socat": {
+			"enabled": false,
+			"master": "pty,raw,echo=0,link=/tmp/ttyZ2M,mode=777",
+			"slave": "tcp-listen:8485,keepalive,nodelay,reuseaddr,keepidle=1,keepintvl=1,keepcnt=5",
+			"options": "-d -d",
+			"log": false
+		},
+		"mqtt": {},
+		"serial": {}
+	},
   "schema": {
     "rtsp_url_1": "str",
     "rtsp_url_2": "str"
