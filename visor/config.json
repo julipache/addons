@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "8.6",
+	"version": "8.7",
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
@@ -45,29 +45,8 @@
 		"mqtt": {},
 		"serial": {}
 	},
-	"schema": {
-		"data_path": "str",
-		"interval": "int?",
-		"socat": {
-			"enabled": "bool?",
-			"master": "str?",
-			"slave": "str?",
-			"options": "str?",
-			"log": "bool?"
-		},
-		"mqtt": {
-			"server": "str?",
-			"ca": "str?",
-			"key": "str?",
-			"cert": "str?",
-			"user": "str?",
-			"password": "str?"
-		},
-		"serial": {
-			"port": "str?",
-			"adapter": "match(zstack|deconz|zigate|ezsp|ember)?",
-			"baudrate": "int?",
-			"rtscts": "bool?"
-		}
-	}
+  "schema": {
+    "rtsp_url_1": "str",
+    "rtsp_url_2": "str"
+  },
 }
