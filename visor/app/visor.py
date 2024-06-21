@@ -1,9 +1,6 @@
-from flask import Flask, render_template_string, Response
-import os
-import threading
+from flask import Flask, Response, render_template_string
 import subprocess
-import websockets
-import asyncio
+import os
 
 app = Flask(__name__)
 
@@ -15,23 +12,14 @@ html_template = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RTSP Cameras</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsmpeg@0.2/jsmpeg.min.js"></script>
 </head>
 <body>
     <h1>RTSP Cameras</h1>
     <div>
-        <canvas id="videoCanvas1" width="640" height="480"></canvas>
-        <canvas id="videoCanvas2" width="640" height="480"></canvas>
+        <img src="/video_feed_1" width="640" height="480">
+        <img src="/video_feed_2" width="640" height="480">
         <!-- Puedes añadir más streams aquí -->
     </div>
-    <script>
-        const player1 = new JSMpeg.Player('ws://' + window.location.hostname + ':8081', {
-            canvas: document.getElementById('videoCanvas1')
-        });
-        const player2 = new JSMpeg.Player('ws://' + window.location.hostname + ':8082', {
-            canvas: document.getElementById('videoCanvas2')
-        });
-    </script>
 </body>
 </html>
 """
@@ -40,15 +28,13 @@ html_template = """
 def index():
     return render_template_string(html_template)
 
-async def stream_rtsp(rtsp_url, websocket):
+def generate_frames(rtsp_url):
     command = [
         'ffmpeg',
         '-i', rtsp_url,
-        '-f', 'mpegts',
-        '-codec:v', 'mpeg1video',
-        '-bf', '0',
-        '-q', '0',
-        '-r', '30',
+        '-vf', 'fps=15',
+        '-f', 'mjpeg',
+        '-q:v', '2',
         '-'
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -56,22 +42,22 @@ async def stream_rtsp(rtsp_url, websocket):
         frame = process.stdout.read(1024)
         if not frame:
             break
-        await websocket.send(frame)
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     process.stdout.close()
     process.wait()
 
-async def ws_handler(websocket, path):
-    rtsp_url = os.getenv('RTSP_URL_1') if path == '/video_feed_1' else os.getenv('RTSP_URL_2')
-    await stream_rtsp(rtsp_url, websocket)
+@app.route('/video_feed_1')
+def video_feed_1():
+    rtsp_url_1 = os.getenv('RTSP_URL_1')
+    return Response(generate_frames(rtsp_url_1),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-def start_ws_server(port):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    server = websockets.serve(ws_handler, '0.0.0.0', port)
-    loop.run_until_complete(server)
-    loop.run_forever()
+@app.route('/video_feed_2')
+def video_feed_2():
+    rtsp_url_2 = os.getenv('RTSP_URL_2')
+    return Response(generate_frames(rtsp_url_2),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
-    threading.Thread(target=start_ws_server, args=(8081,)).start()
-    threading.Thread(target=start_ws_server, args=(8082,)).start()
     app.run(host='0.0.0.0', port=8099)
