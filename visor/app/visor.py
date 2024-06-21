@@ -15,7 +15,7 @@ html_template = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RTSP Cameras</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmpeg/0.2/jsmpeg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsmpeg@0.2/jsmpeg.min.js"></script>
 </head>
 <body>
     <h1>RTSP Cameras</h1>
@@ -64,14 +64,14 @@ async def ws_handler(websocket, path):
     rtsp_url = os.getenv('RTSP_URL_1') if path == '/video_feed_1' else os.getenv('RTSP_URL_2')
     await stream_rtsp(rtsp_url, websocket)
 
-def start_ws_server():
+def start_ws_server(port):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    server = websockets.serve(ws_handler, '0.0.0.0', 8081)
+    server = websockets.serve(ws_handler, '0.0.0.0', port)
     loop.run_until_complete(server)
     loop.run_forever()
 
 if __name__ == "__main__":
-    threading.Thread(target=start_ws_server).start()
+    threading.Thread(target=start_ws_server, args=(8081,)).start()
     threading.Thread(target=start_ws_server, args=(8082,)).start()
     app.run(host='0.0.0.0', port=8099)
