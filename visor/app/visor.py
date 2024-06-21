@@ -50,13 +50,13 @@ def generate_frames(rtsp_url):
 @app.route('/video_feed_1')
 def video_feed_1():
     rtsp_url_1 = os.getenv('RTSP_URL_1')
-    return Response(generate_frames(rtsp_url_1),
+    return Response(generate_frames("rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264"),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/video_feed_2')
 def video_feed_2():
     rtsp_url_2 = os.getenv('RTSP_URL_2')
-    return Response(generate_frames(rtsp_url_2),
+    return Response(generate_frames("rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264"),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
