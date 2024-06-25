@@ -104,15 +104,11 @@ def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_c
                 logging.info(f"Deleted original image {img_path}")
 
 if __name__ == "__main__":
-    #input_directory = 'D:\\identificaciongatos\\recortads\\analizar'
-    input_directory = '/media/frigate/clips/sala_estar'
-    #output_directory = 'D:\\identificaciongatos\\recortads\\analizar_recortado'
-    output_directory = '/media/frigate/clips/sala_estar_recortado'
-    
-    #model_path = '/media/mi_modelo_entrenado.keras'
+    input_directory = '/media/frigate/clips/'
+    output_directory = '/media/frigate/clips/recortado'
     
     yolo_weights = '/media/yolov3.weights'  # Path to YOLO weights file
-
     yolo_cfg = '/media/yolov3.cfg'          # Path to YOLO config file
     yolo_names = '/media/coco.names'        # Path to file with class names
+    
     detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_cfg, yolo_names)
