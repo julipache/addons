@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
     logging.StreamHandler()
 ])
 
-def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_cfg, yolo_names, conf_threshold=0.5, nms_threshold=0.4):
+def detect_and_crop_cats(input_directory, output_directory, originals_directory, yolo_weights, yolo_cfg, yolo_names, conf_threshold=0.5, nms_threshold=0.4):
     net = cv2.dnn.readNet(yolo_weights, yolo_cfg)
     layer_names = net.getLayerNames()
     output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
@@ -21,10 +21,6 @@ def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_c
     logging.info(f"Classes loaded: {classes}")
 
     for subdir, _, files in os.walk(input_directory):
-        # Asegurarse de que solo se procesen subcarpetas, no el directorio raíz
-        if subdir == input_directory:
-            continue
-
         for file in files:
             if file.endswith(".jpg") or file.endswith(".png"):
                 img_path = os.path.join(subdir, file)
@@ -95,23 +91,27 @@ def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_c
 
                         # Dibujar un cuadro alrededor del gato detectado y guardar la imagen en la carpeta "originales"
                         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        originals_dir = os.path.join(output_directory, 'originales', relative_path)
-                        if not os.path.exists(originals_dir):
-                            os.makedirs(originals_dir)
-                        detection_output_path = os.path.join(originals_dir, f"{base}_detection{ext}")
+                        originals_subdir = os.path.join(originals_directory, relative_path)
+                        if not os.path.exists(originals_subdir):
+                            os.makedirs(originals_subdir)
+                        detection_output_path = os.path.join(originals_subdir, f"{base}_detection{ext}")
                         cv2.imwrite(detection_output_path, img)
                         logging.info(f"Saved detection image to {detection_output_path}")
 
-                # Eliminar la imagen original después de procesarla
-                os.remove(img_path)
-                logging.info(f"Deleted original image {img_path}")
+                # Mover la imagen original a la carpeta de originales
+                originals_subdir = os.path.join(originals_directory, relative_path)
+                if not os.path.exists(originals_subdir):
+                    os.makedirs(originals_subdir)
+                shutil.move(img_path, os.path.join(originals_subdir, file))
+                logging.info(f"Moved original image to {originals_subdir}")
 
 if __name__ == "__main__":
     input_directory = '/media/frigate/clips/'
-    output_directory = '/media/frigate/clips/recortado'
+    output_directory = '/media/frigate/clips/recortadas'
+    originals_directory = '/media/frigate/clips/originales'
     
     yolo_weights = '/media/yolov3.weights'  # Path to YOLO weights file
     yolo_cfg = '/media/yolov3.cfg'          # Path to YOLO config file
     yolo_names = '/media/coco.names'        # Path to file with class names
     
-    detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_cfg, yolo_names)
+    detect_and_crop_cats(input_directory, output_directory, originals_directory, yolo_weights, yolo_cfg, yolo_names)
