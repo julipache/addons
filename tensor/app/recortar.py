@@ -4,7 +4,6 @@ import numpy as np
 import logging
 import shutil
 
-
 # Configurar el logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
     logging.FileHandler("recortar_script.log"),
@@ -22,6 +21,10 @@ def detect_and_crop_cats(input_directory, output_directory, yolo_weights, yolo_c
     logging.info(f"Classes loaded: {classes}")
 
     for subdir, _, files in os.walk(input_directory):
+        # Asegurarse de que solo se procesen subcarpetas, no el directorio raíz
+        if subdir == input_directory:
+            continue
+
         for file in files:
             if file.endswith(".jpg") or file.endswith(".png"):
                 img_path = os.path.join(subdir, file)
