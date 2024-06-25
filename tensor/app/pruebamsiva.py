@@ -12,10 +12,10 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Directorios
-input_directory = '/media/frigate/clips/recortado'
-output_directory = '/media/frigate/clips/clasificado'
+input_directory = '/media/frigate/recortado'
+output_directory = '/media/frigate/clasificado'
 doubtful_directory = os.path.join(output_directory, 'dudosos')
-log_file_path = '/media/frigate/clips/predicciones_log.csv'
+log_file_path = '/media/frigate/predicciones_log.csv'
 
 # Crear directorios si no existen
 os.makedirs(output_directory, exist_ok=True)

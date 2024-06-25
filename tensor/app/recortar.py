@@ -54,15 +54,16 @@ def detect_and_crop_cats(input_directory, output_directory, originals_directory,
                             confidences.append(float(confidence))
                             logging.info(f"Detected cat with confidence {confidence:.2f} at [{x}, {y}, {w}, {h}]")
 
+                # Move original image to originals directory
+                relative_path = os.path.relpath(subdir, input_directory)
+                originals_subdir = os.path.join(originals_directory, relative_path)
+                if not os.path.exists(originals_subdir):
+                    os.makedirs(originals_subdir)
+                shutil.move(img_path, os.path.join(originals_subdir, file))
+                logging.info(f"Moved original image to {originals_subdir}")
+
                 if len(boxes) == 0:
-                    # No cats detected, move image to 'nodetectados' folder
-                    relative_path = os.path.relpath(subdir, input_directory)
-                    output_subdir = os.path.join(output_directory, 'nodetectados', relative_path)
-                    if not os.path.exists(output_subdir):
-                        os.makedirs(output_subdir)
-                    output_path = os.path.join(output_subdir, file)
-                    shutil.move(img_path, output_path)
-                    logging.info(f"Moved image with no detections to {output_path}")
+                    # No cats detected, skip cropping
                     continue
 
                 indexes = cv2.dnn.NMSBoxes(boxes, confidences, conf_threshold, nms_threshold)
@@ -79,7 +80,6 @@ def detect_and_crop_cats(input_directory, output_directory, originals_directory,
                             logging.info(f"Skipping empty crop for image {img_path}")
                             continue
 
-                        relative_path = os.path.relpath(subdir, input_directory)
                         output_subdir = os.path.join(output_directory, relative_path)
                         if not os.path.exists(output_subdir):
                             os.makedirs(output_subdir)
@@ -89,26 +89,10 @@ def detect_and_crop_cats(input_directory, output_directory, originals_directory,
                         cv2.imwrite(output_path, crop_img)
                         logging.info(f"Saved cropped image to {output_path}")
 
-                        # Dibujar un cuadro alrededor del gato detectado y guardar la imagen en la carpeta "originales"
-                        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        originals_subdir = os.path.join(originals_directory, relative_path)
-                        if not os.path.exists(originals_subdir):
-                            os.makedirs(originals_subdir)
-                        detection_output_path = os.path.join(originals_subdir, f"{base}_detection{ext}")
-                        cv2.imwrite(detection_output_path, img)
-                        logging.info(f"Saved detection image to {detection_output_path}")
-
-                # Mover la imagen original a la carpeta de originales
-                originals_subdir = os.path.join(originals_directory, relative_path)
-                if not os.path.exists(originals_subdir):
-                    os.makedirs(originals_subdir)
-                shutil.move(img_path, os.path.join(originals_subdir, file))
-                logging.info(f"Moved original image to {originals_subdir}")
-
 if __name__ == "__main__":
-    input_directory = '/media/frigate/clips/'
-    output_directory = '/media/frigate/clips/recortadas'
-    originals_directory = '/media/frigate/clips/originales'
+    input_directory = '/media/frigate/clips'
+    output_directory = '/media/frigate/recortadas'
+    originals_directory = '/media/frigate/originales'
     
     yolo_weights = '/media/yolov3.weights'  # Path to YOLO weights file
     yolo_cfg = '/media/yolov3.cfg'          # Path to YOLO config file
