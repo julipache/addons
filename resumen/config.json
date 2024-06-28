@@ -1,0 +1,49 @@
+{
+	"name": "analizar",
+	"version": "1.0",
+	"slug": "analizar",
+	"description": "A Home Assistant add-on that analyzes show cams .",
+	"uart": true,
+	"url": "https://github.com/julipache/addons/tree/main/analizar",
+	"startup": "application",
+	"services": [
+		"mqtt:need"
+	],
+	"arch": [
+		"aarch64",
+		"amd64",
+		"armhf",
+		"armv7",
+		"i386"
+	],
+	"boot": "auto",
+	"init": false,
+	"ingress": true,
+	"timeout": 30,
+	"panel_icon": "mdi:zigbee",
+	"ingress_port": 8099,
+  "ports": {
+    "8099/tcp": 8099,
+    "8081/tcp": 8081,
+    "8082/tcp": 8082
+  },
+	"options": {
+    "rtsp_url_1": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
+	"rtsp_url_2": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
+		"data_path": "/config/analizar",
+		"interval": 3600,
+		"socat": {
+			"enabled": false,
+			"master": "pty,raw,echo=0,link=/tmp/ttyZ2M,mode=777",
+			"slave": "tcp-listen:8485,keepalive,nodelay,reuseaddr,keepidle=1,keepintvl=1,keepcnt=5",
+			"options": "-d -d",
+			"log": false
+		},
+		"mqtt": {},
+		"serial": {}
+	},
+  "schema": {
+    "rtsp_url_1": "str",
+    "rtsp_url_2": "str"
+  }
+}
