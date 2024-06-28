@@ -215,8 +215,8 @@ def send_email(subject, body, attachments):
         logging.error(f"General error sending email: {str(e)}")
 
 if __name__ == "__main__":
-    directory_path = 'D:\\identificaciongatos\\pruebaEventosResumen'
-    originales_path = 'D:\\identificaciongatos\\pruebaEventosOriginales\\originales'
+    directory_path = '/media/frigate/clasificado'
+    originales_path = '/media/frigate/originales'
     
     images = list_images(directory_path)
     
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     full_email_body = email_body + "\nCronología de Movimientos:\n" + chronology_text
 
     # Crear los videos por gato
-    output_video_directory = 'D:\\identificaciongatos\\pruebaEventosResumen\\videos'
+    output_video_directory = '/media/frigate/videos_resumen'
     crear_video_por_gato(original_images_for_video, output_video_directory)
 
     # Adjuntar los videos de cada gato
