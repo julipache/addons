@@ -6,7 +6,7 @@ import requests
 import cv2
 
 # Inicializa el cliente de OpenAI con tu clave API
-api_key = "sk-proj-190rkG6wXAe2DdgFpUHJT3BlbkFJdWpVPEeYrwJcY4TQLmRr"
+
 
 # Configuración de logging
 logging.basicConfig(filename="video_analysis_log.log", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
