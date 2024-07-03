@@ -12,8 +12,8 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Directorios
-input_directory = '/media/frigate/recortadas'
-output_directory = '/media/frigate/clasificado'
+input_directory ='/media/frigate/recortadas'
+output_directory ='/media/frigate/clasificado'
 doubtful_directory = os.path.join(output_directory, 'dudosos')
 log_file_path = '/media/frigate/predicciones_log.csv'
 
@@ -22,12 +22,12 @@ os.makedirs(output_directory, exist_ok=True)
 os.makedirs(doubtful_directory, exist_ok=True)
 
 # Cargar el modelo entrenado
-model_path = '/media/mi_modelo_entrenado.keras'
+model_path ='/media/mi_modelo_entrenado.keras'
 model = load_model(model_path)
 logging.info("Model loaded successfully")
 
 # Etiquetas de clases
-class_labels = {0: 'coco', 1: 'pina', 2: 'pollo', 3: 'ray', 4: 'snape'}
+class_labels = {0: 'coco', 1: 'pina', 2: 'pollo', 3: 'ray', 4: 'sdg', 5: 'snape'}
 
 # Función para cargar y preprocesar una imagen
 def load_and_prepare_image(img_path, target_size=(224, 224)):
@@ -47,7 +47,7 @@ def predict_and_classify_image(img_path, log_writer):
 
     logging.info(f"Processed {img_path} - Predicted: {predicted_class_name}, Confidence: {confidence:.2f}%")
 
-    if confidence < 70:  # Umbral de confianza para considerar una imagen como "dudosa"
+    if confidence < 85:  # Umbral de confianza para considerar una imagen como "dudosa"
         target_folder = doubtful_directory
     else:
         target_folder = os.path.join(output_directory, predicted_class_name)
