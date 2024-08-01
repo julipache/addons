@@ -192,20 +192,8 @@ def send_email(subject, body, fotos, videos):
                     message.attach(img)
             except Exception as e:
                 logging.error(f"Error attaching file {file_path}: {str(e)}")
-    
-    for gato, video_path in videos.items():
-        try:
-            with open(video_path, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
-                encoders.encode_base64(part)
-                part.add_header(
-                    "Content-Disposition",
-                    f"attachment; filename={os.path.basename(video_path)}",
-                )
-                message.attach(part)
-        except Exception as e:
-            logging.error(f"Error attaching video {video_path}: {str(e)}")
+                
+                
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
