@@ -169,14 +169,13 @@ def crear_cuerpo_email(resumen, fotos):
     
     return html
 
-def send_email(subject, body, fotos):
+def send_email(subject, body, fotos, destinatarios):
     sender_email = "75642e001@smtp-brevo.com"
-    receiver_email = "julioalberto85@gmail.com"
     password = "8nP5LXfVT1tmvCgW"
 
     message = MIMEMultipart()
     message["From"] = sender_email
-    message["To"] = receiver_email
+    message["To"] = ", ".join(destinatarios)
     message["Subject"] = subject
 
     message.attach(MIMEText(body, "html"))
@@ -197,7 +196,7 @@ def send_email(subject, body, fotos):
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
         server.starttls()
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
+        server.sendmail(sender_email, destinatarios, message.as_string())
         server.close()
         logging.info("Email sent successfully")
     except smtplib.SMTPException as e:
@@ -235,12 +234,14 @@ if __name__ == "__main__":
     hora_fin = datetime.now()
     hora_inicio = hora_fin - timedelta(hours=24)
     asunto = f"Resumen de Gatos Detectados desde {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')} hasta {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}"
+    destinatarios = ["julioalberto85@gmail.com", "otroemail@example.com"]
 
     # Enviar el resumen por correo electrónico
     logging.debug("Enviando el resumen por correo electrónico...")
     send_email(
         subject=asunto,
         body=cuerpo_email,
-        fotos=fotos
+        fotos=fotos,
+        destinatarios=destinatarios
     )
     logging.debug("Proceso completado")
