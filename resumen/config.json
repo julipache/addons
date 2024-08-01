@@ -1,10 +1,10 @@
 {
-	"name": "analizar",
+	"name": "Resumen",
 	"version": "1.0",
-	"slug": "analizar",
+	"slug": "Resumen",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
-	"url": "https://github.com/julipache/addons/tree/main/analizar",
+	"url": "https://github.com/julipache/addons/tree/main/Resumen",
 	"startup": "application",
 	"services": [
 		"mqtt:need"
@@ -30,7 +30,7 @@
 	"options": {
     "rtsp_url_1": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
 	"rtsp_url_2": "rtsp://jupache:mIteASkuyVer@192.168.1.143/ch0_0.h264",
-		"data_path": "/config/analizar",
+		"data_path": "/config/Resumen",
 		"interval": 3600,
 		"socat": {
 			"enabled": false,

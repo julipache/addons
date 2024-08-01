@@ -5,17 +5,20 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+import cv2
+import time
+
+# Configurar logging para consola y archivo
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+console = logging.StreamHandler()
+console.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console.setFormatter(formatter)
+logging.getLogger('').addHandler(console)
 
 def es_reciente(file_path, horas=24):
     """
     Verifica si el archivo fue modificado en las últimas 'horas' horas.
-    
-    Args:
-        file_path (str): La ruta del archivo.
-        horas (int): Número de horas para verificar.
-        
-    Returns:
-        bool: True si el archivo fue modificado en las últimas 'horas' horas, de lo contrario False.
     """
     tiempo_limite = datetime.now() - timedelta(hours=horas)
     fecha_modificacion = datetime.fromtimestamp(os.path.getmtime(file_path))
@@ -24,51 +27,82 @@ def es_reciente(file_path, horas=24):
 def obtener_camara_de_imagen(nombre_imagen):
     """
     Extrae el nombre de la cámara del nombre de la imagen.
-    
-    Args:
-        nombre_imagen (str): Nombre del archivo de la imagen.
-        
-    Returns:
-        str: Nombre de la cámara.
     """
     return nombre_imagen.split('-')[0]
 
-def buscar_imagen_original(nombre_imagen_recortada, directorio_originales):
+def cargar_imagenes_originales(directorio_originales):
     """
-    Busca la imagen original en el directorio de originales.
-    
-    Args:
-        nombre_imagen_recortada (str): Nombre de la imagen recortada.
-        directorio_originales (str): Directorio base donde se encuentran las imágenes originales.
-        
-    Returns:
-        str: Ruta de la imagen original si se encuentra, de lo contrario None.
+    Carga todas las rutas de imágenes originales en un diccionario para acceso rápido.
     """
-    camara = obtener_camara_de_imagen(nombre_imagen_recortada)
-    nombre_base = nombre_imagen_recortada.split('_crop')[0]
-    
-    for root, dirs, files in os.walk(os.path.join(directorio_originales, camara)):
+    imagenes_originales = {}
+    start_time = time.time()
+    for root, dirs, files in os.walk(directorio_originales):
         for file in files:
-            if file.startswith(nombre_base) and "-clean" in file:
-                return os.path.join(root, file)
-    return None
+            if "-clean" in file:
+                nombre_base = file.split('-clean')[0]
+                imagenes_originales[nombre_base] = os.path.join(root, file)
+    logging.debug(f"Cargar imágenes originales tomó {time.time() - start_time} segundos")
+    return imagenes_originales
 
-def resumen_gatos_en_24_horas(directorio_base, directorio_originales):
+def buscar_imagen_original(nombre_imagen_recortada, imagenes_originales):
+    """
+    Busca la imagen original en el diccionario de imágenes originales.
+    """
+    nombre_base = nombre_imagen_recortada.split('_crop')[0]
+    return imagenes_originales.get(nombre_base, None)
+
+def crear_video(gato, imagenes, directorio_videos):
+    """
+    Crea un video para cada gato utilizando las imágenes en orden cronológico.
+    """
+    if not imagenes:
+        return None
+
+    # Crear el directorio de salida si no existe
+    os.makedirs(directorio_videos, exist_ok=True)
+
+    # Ordenar las imágenes cronológicamente
+    imagenes.sort(key=lambda x: os.path.getmtime(x))
+    
+    # Leer la primera imagen para obtener el tamaño del video
+    frame = cv2.imread(imagenes[0])
+    if frame is None:
+        logging.error(f"Error al leer la imagen {imagenes[0]}")
+        return None
+    
+    height, width, layers = frame.shape
+    size = (width, height)
+    
+    # Inicializar el objeto de escritura de video
+    video_path = os.path.join(directorio_videos, f"{gato}.mp4")
+    out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), 1, size)
+    
+    for imagen in imagenes:
+        frame = cv2.imread(imagen)
+        if frame is not None:
+            out.write(frame)
+        else:
+            logging.error(f"Error al leer la imagen {imagen}")
+    
+    out.release()
+    logging.info(f"Video de {gato} guardado en {video_path}")
+    return video_path
+
+def resumen_gatos_en_24_horas(directorio_base, imagenes_originales):
     """
     Genera un resumen de las cámaras y horarios por donde estuvo cada gato en las últimas 24 horas.
-    
-    Args:
-        directorio_base (str): Ruta base donde se encuentran las carpetas de los gatos.
-        directorio_originales (str): Ruta base donde se encuentran las imágenes originales.
     """
     resumen = {}
     fotos = {}
+    videos = {}
 
+    start_time = time.time()
     for gato in os.listdir(directorio_base):
         path_gato = os.path.join(directorio_base, gato)
         if os.path.isdir(path_gato) and gato != "dudosos":
             resumen[gato] = []
             fotos[gato] = []
+            videos[gato] = []
             for imagen in os.listdir(path_gato):
                 path_imagen = os.path.join(path_gato, imagen)
                 if os.path.isfile(path_imagen) and es_reciente(path_imagen):
@@ -77,29 +111,27 @@ def resumen_gatos_en_24_horas(directorio_base, directorio_originales):
                     resumen[gato].append((fecha_modificacion, camara))
                     
                     # Buscar la imagen original
-                    path_imagen_original = buscar_imagen_original(imagen, directorio_originales)
+                    path_imagen_original = buscar_imagen_original(imagen, imagenes_originales)
                     if path_imagen_original:
                         fotos[gato].append(path_imagen_original)
+                        videos[gato].append(path_imagen_original)
                     else:
                         fotos[gato].append(path_imagen)  # Usar la imagen recortada si no se encuentra la original
+                        videos[gato].append(path_imagen)
+    logging.debug(f"Generar resumen de gatos tomó {time.time() - start_time} segundos")
     
     # Ordenar las detecciones por tiempo para cada gato
     for gato in resumen:
         resumen[gato].sort()
+        fotos[gato] = [foto for _, foto in sorted(zip([fecha for fecha, _ in resumen[gato]], fotos[gato]))]
+        videos[gato].sort(key=lambda x: os.path.getmtime(x))
 
-    return resumen, fotos
+    return resumen, fotos, videos
 
 def crear_cuerpo_email(resumen, fotos):
     """
     Genera el cuerpo del email con el resumen de las cámaras y horarios por donde estuvo cada gato,
     incluyendo algunas fotos incrustadas.
-    
-    Args:
-        resumen (dict): Diccionario con el resumen de cámaras y horarios por gato.
-        fotos (dict): Diccionario con las rutas de fotos por gato.
-        
-    Returns:
-        str: El cuerpo del email formateado como HTML.
     """
     html = """<html>
     <body>
@@ -148,7 +180,7 @@ def send_email(subject, body, fotos):
     message.attach(MIMEText(body, "html"))
 
     for gato, paths in fotos.items():
-        for file_path in paths[:10]:  # Adjuntar hasta 10 fotos por gato
+        for file_path in paths[:5]:  # Reducir la cantidad de fotos adjuntas a 5 por gato
             try:
                 with open(file_path, "rb") as attachment:
                     img_data = attachment.read()
@@ -172,9 +204,28 @@ def send_email(subject, body, fotos):
         logging.error(f"General error sending email: {str(e)}")
 
 if __name__ == "__main__":
-    directorio_base = r'\\192.168.1.127\media\frigate\clasificado'
-    directorio_originales = r'\\192.168.1.127\media\frigate\originales'
-    resumen, fotos = resumen_gatos_en_24_horas(directorio_base, directorio_originales)
+    directorio_base = r'\media\frigate\clasificado'
+    directorio_originales = r'\media\frigate\originales'
+    directorio_videos = r'\media\frigate\videos'
+    
+    # Cargar imágenes originales
+    logging.debug("Cargando imágenes originales...")
+    imagenes_originales = cargar_imagenes_originales(directorio_originales)
+    
+    # Generar el resumen de gatos en las últimas 24 horas
+    logging.debug("Generando resumen de gatos en las últimas 24 horas...")
+    resumen, fotos, videos = resumen_gatos_en_24_horas(directorio_base, imagenes_originales)
+    
+    # Crear videos para cada gato con las imágenes de las últimas 24 horas
+    logging.debug("Creando videos para cada gato...")
+    video_paths = {}
+    start_time_videos = time.time()
+    for gato, imagenes in videos.items():
+        video_path = crear_video(gato, imagenes, directorio_videos)
+        if video_path:
+            video_paths[gato] = video_path
+    logging.debug(f"Crear videos tomó {time.time() - start_time_videos} segundos")
+    
     cuerpo_email = crear_cuerpo_email(resumen, fotos)
     print(cuerpo_email)  # También puedes imprimirlo en la consola si lo deseas
     
@@ -184,8 +235,10 @@ if __name__ == "__main__":
     asunto = f"Resumen de Gatos Detectados desde {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')} hasta {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}"
 
     # Enviar el resumen por correo electrónico
+    logging.debug("Enviando el resumen por correo electrónico...")
     send_email(
         subject=asunto,
         body=cuerpo_email,
         fotos=fotos
     )
+    logging.debug("Proceso completado")
