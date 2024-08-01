@@ -1,6 +1,6 @@
 {
 	"name": "resumen",
-	"version": "8.5",
+	"version": "8.6",
 
 	"slug": "resumen",
 	"description": "A Home Assistant add-on that analyzes images and classifies them using a resumenFlow model.",
@@ -27,14 +27,6 @@
 		"config:rw",
 		"media:rw"
 	],
-	"ports": {
-		"8485/tcp": 8485,
-		"8099/tcp": null
-	},
-	"ports_description": {
-		"8485/tcp": "Socat tcp-listen port",
-		"8099/tcp": "Frontend tcp-listen port"
-	},
 	"options": {
 		"data_path": "/config/resumen",
 		"interval": 3600,
