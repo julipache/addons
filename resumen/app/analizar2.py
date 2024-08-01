@@ -5,6 +5,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from email.mime.base import MIMEBase
+from email import encoders
 import cv2
 import time
 
@@ -167,7 +169,7 @@ def crear_cuerpo_email(resumen, fotos):
     
     return html
 
-def send_email(subject, body, fotos):
+def send_email(subject, body, fotos, videos):
     sender_email = "75642e001@smtp-brevo.com"
     receiver_email = "julioalberto85@gmail.com"
     password = "8nP5LXfVT1tmvCgW"
@@ -190,6 +192,20 @@ def send_email(subject, body, fotos):
                     message.attach(img)
             except Exception as e:
                 logging.error(f"Error attaching file {file_path}: {str(e)}")
+    
+    for gato, video_path in videos.items():
+        try:
+            with open(video_path, "rb") as attachment:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header(
+                    "Content-Disposition",
+                    f"attachment; filename={os.path.basename(video_path)}",
+                )
+                message.attach(part)
+        except Exception as e:
+            logging.error(f"Error attaching video {video_path}: {str(e)}")
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -239,6 +255,7 @@ if __name__ == "__main__":
     send_email(
         subject=asunto,
         body=cuerpo_email,
-        fotos=fotos
+        fotos=fotos,
+        videos=video_paths
     )
     logging.debug("Proceso completado")
