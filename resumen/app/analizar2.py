@@ -141,7 +141,7 @@ def crear_cuerpo_email(resumen, fotos):
        # Añadir enlace a la aplicación de Home Assistant
     html += """
     <h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
-    <a href="https://junucasa.duckdns.org:10/media-browser/browser">Ir a la aplicación</a>
+    <a href="https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate%2Fvideos">Ir a la aplicación</a>
     """
     
     for gato, detecciones in resumen.items():
