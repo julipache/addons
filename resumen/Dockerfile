@@ -36,10 +36,6 @@
 
 	# Copiar el directorio de la aplicación
 	COPY ./app /app
-
-	EXPOSE 8099
-	EXPOSE 8081
-	EXPOSE 8082
-
+	
 	# Comando para ejecutar el script de configuración de cron
 	CMD ["python", "analizar2.py"]
