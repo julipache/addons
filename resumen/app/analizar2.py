@@ -150,15 +150,9 @@ def crear_cuerpo_email(resumen, fotos):
             
             if fotos[gato]:
                 html += "<h3>Fotos:</h3>"
-                # Incluir entre 5 y 10 fotos por gato, de diferentes cámaras si es posible
-                fotos_incluidas = set()
-                fotos_mostradas = 0
+                # Incluir todas las fotos por gato
                 for foto in fotos[gato]:
-                    camara = obtener_camara_de_imagen(os.path.basename(foto))
-                    if fotos_mostradas < 10 and camara not in fotos_incluidas:
-                        fotos_incluidas.add(camara)
-                        html += f'<img src="cid:{os.path.basename(foto)}" style="max-width:200px; margin:10px;"/><br>'
-                        fotos_mostradas += 1
+                    html += f'<img src="cid:{os.path.basename(foto)}" style="max-width:200px; margin:10px;"/><br>'
         else:
             html += f"<h2>{gato} no estuvo en ninguna cámara en las últimas 24 horas.</h2>"
     
@@ -169,7 +163,7 @@ def crear_cuerpo_email(resumen, fotos):
     
     return html
 
-def send_email(subject, body, fotos, videos):
+def send_email(subject, body, fotos):
     sender_email = "75642e001@smtp-brevo.com"
     receiver_email = "julioalberto85@gmail.com"
     password = "8nP5LXfVT1tmvCgW"
@@ -182,7 +176,7 @@ def send_email(subject, body, fotos, videos):
     message.attach(MIMEText(body, "html"))
 
     for gato, paths in fotos.items():
-        for file_path in paths[:5]:  # Reducir la cantidad de fotos adjuntas a 5 por gato
+        for file_path in paths:  # Adjuntar todas las fotos involucradas en el resumen
             try:
                 with open(file_path, "rb") as attachment:
                     img_data = attachment.read()
@@ -192,8 +186,6 @@ def send_email(subject, body, fotos, videos):
                     message.attach(img)
             except Exception as e:
                 logging.error(f"Error attaching file {file_path}: {str(e)}")
-                
-                
 
     try:
         server = smtplib.SMTP("smtp-relay.brevo.com", 587)
@@ -243,7 +235,6 @@ if __name__ == "__main__":
     send_email(
         subject=asunto,
         body=cuerpo_email,
-        fotos=fotos,
-        videos=video_paths
+        fotos=fotos
     )
     logging.debug("Proceso completado")
