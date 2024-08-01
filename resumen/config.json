@@ -2,7 +2,7 @@
 	"name": "resumen",
 	"version": "8.5",
 
-	"slug": "image_analyzer",
+	"slug": "resumen",
 	"description": "A Home Assistant add-on that analyzes images and classifies them using a resumenFlow model.",
 	"uart": true,
 	"url": "https://github.com/julipache/addons/tree/main/resumen",
