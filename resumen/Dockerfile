@@ -1,41 +1,26 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-# Instala ffmpeg y las dependencias
-RUN apt-get update && \
-	apt-get install -y --no-install-recommends \
-	build-essential \
-	libglib2.0-0 \
-	libsm6 \
-	libxext6 \
-	libxrender1 \
-	libopencv-dev \
-	ffmpeg && \
-	pip install --no-cache-dir \
-	openai \
-	requests \
-	opencv-python-headless \
-	smtplib
-	
-	
-
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    cron
 
 # Crear un enlace simbólico de python a python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # Instalar dependencias necesarias
-RUN pip install --no-cache-dir \
-	openai \
-	requests \
-	opencv-python-headless \
-	Flask \
-	websockets
-
+RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless sendgrid
 
 # Establecer el directorio de trabajo
 WORKDIR /app
 
 # Copiar el directorio de la aplicación
 COPY ./app /app
+
+
 
 # Comando para ejecutar el script de configuración de cron
 CMD ["python", "analizar2.py"]
