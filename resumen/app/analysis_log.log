@@ -1,4 +1,0 @@
-2024-07-01 09:24:18,374 - INFO - Analizando video: path_to_your_video.mp4
-2024-07-01 09:24:18,473 - INFO - Creando resumen del video.
-2024-07-01 09:24:18,477 - DEBUG - Starting new HTTPS connection (1): api.openai.com:443
-2024-07-01 09:24:18,758 - DEBUG - https://api.openai.com:443 "POST /v1/chat/completions HTTP/1.1" 401 306
