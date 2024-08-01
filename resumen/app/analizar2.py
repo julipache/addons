@@ -154,6 +154,12 @@ def crear_cuerpo_email(resumen, fotos):
         else:
             html += f"<h2>{gato} no estuvo en ninguna cámara en las últimas 24 horas.</h2>"
     
+    # Añadir enlace a la aplicación de Home Assistant
+    html += """
+    <h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
+    <a href="https://junucasa.duckdns.org:10/media-browser/browser">Ir a la aplicación</a>
+    """
+    
     html += """
     </body>
     </html>
