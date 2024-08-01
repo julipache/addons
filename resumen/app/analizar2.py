@@ -234,7 +234,7 @@ if __name__ == "__main__":
     hora_fin = datetime.now()
     hora_inicio = hora_fin - timedelta(hours=24)
     asunto = f"Resumen de Gatos Detectados desde {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')} hasta {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}"
-    destinatarios = ["julioalberto85@gmail.com", "otroemail@example.com"]
+    destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
 
     # Enviar el resumen por correo electrónico
     logging.debug("Enviando el resumen por correo electrónico...")
