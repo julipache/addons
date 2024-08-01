@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import cv2
 import time
+import time
 
 # Configurar logging para consola y archivo
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -138,12 +139,6 @@ def crear_cuerpo_email(resumen, fotos):
     <h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>
     """
     
-       # Añadir enlace a la aplicación de Home Assistant
-    html += """
-    <h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
-    <a href="https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate%2Fvideos">Ir a la aplicación</a>
-    """
-    
     for gato, detecciones in resumen.items():
         if detecciones:
             html += f"<h2>{gato}</h2>"
@@ -160,7 +155,11 @@ def crear_cuerpo_email(resumen, fotos):
         else:
             html += f"<h2>{gato} no estuvo en ninguna cámara en las últimas 24 horas.</h2>"
     
-   
+    # Añadir enlace a la aplicación de Home Assistant
+    html += """
+    <h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
+    <a href="https://junucasa.duckdns.org:10/media-browser/browser">Ir a la aplicación</a>
+    """
     
     html += """
     </body>
@@ -205,43 +204,56 @@ def send_email(subject, body, fotos, destinatarios):
         logging.error(f"General error sending email: {str(e)}")
 
 if __name__ == "__main__":
-    directorio_base = r'/media/frigate/clasificado'
-    directorio_originales = r'/media/frigate/originales'
-    directorio_videos = r'/media/frigate/videos'
-    
-    # Cargar imágenes originales
-    logging.debug("Cargando imágenes originales...")
-    imagenes_originales = cargar_imagenes_originales(directorio_originales)
-    
-    # Generar el resumen de gatos en las últimas 24 horas
-    logging.debug("Generando resumen de gatos en las últimas 24 horas...")
-    resumen, fotos, videos = resumen_gatos_en_24_horas(directorio_base, imagenes_originales)
-    
-    # Crear videos para cada gato con las imágenes de las últimas 24 horas
-    logging.debug("Creando videos para cada gato...")
-    video_paths = {}
-    start_time_videos = time.time()
-    for gato, imagenes in videos.items():
-        video_path = crear_video(gato, imagenes, directorio_videos)
-        if video_path:
-            video_paths[gato] = video_path
-    logging.debug(f"Crear videos tomó {time.time() - start_time_videos} segundos")
-    
-    cuerpo_email = crear_cuerpo_email(resumen, fotos)
-    print(cuerpo_email)  # También puedes imprimirlo en la consola si lo deseas
-    
-    # Calcular el rango de tiempo para el asunto del email
-    hora_fin = datetime.now()
-    hora_inicio = hora_fin - timedelta(hours=24)
-    asunto = f"Resumen de Gatos Detectados desde {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')} hasta {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}"
-    destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
+    while True:
+        # Comprobar la hora actual
+        now = datetime.now()
+        # Calcular la hora de la próxima ejecución (mañana a las 7 AM)
+        next_run = now.replace(hour=7, minute=0, second=0, microsecond=0) + timedelta(days=1)
 
-    # Enviar el resumen por correo electrónico
-    logging.debug("Enviando el resumen por correo electrónico...")
-    send_email(
-        subject=asunto,
-        body=cuerpo_email,
-        fotos=fotos,
-        destinatarios=destinatarios
-    )
-    logging.debug("Proceso completado")
+        # Dormir hasta la próxima ejecución
+        time_to_sleep = (next_run - now).total_seconds()
+        logging.debug(f"Dormir hasta la próxima ejecución: {time_to_sleep} segundos")
+        time.sleep(time_to_sleep)
+
+        directorio_base = r'/media/frigate/clasificado'
+        directorio_originales = r'/media/frigate/originales'
+        directorio_videos = r'/media/frigate/videos'
+        
+        # Cargar imágenes originales
+        logging.debug("Cargando imágenes originales...")
+        imagenes_originales = cargar_imagenes_originales(directorio_originales)
+        
+        # Generar el resumen de gatos en las últimas 24 horas
+        logging.debug("Generando resumen de gatos en las últimas 24 horas...")
+        resumen, fotos, videos = resumen_gatos_en_24_horas(directorio_base, imagenes_originales)
+        
+        # Crear videos para cada gato con las imágenes de las últimas 24 horas
+        logging.debug("Creando videos para cada gato...")
+        video_paths = {}
+        start_time_videos = time.time()
+        for gato, imagenes in videos.items():
+            video_path = crear_video(gato, imagenes, directorio_videos)
+            if video_path:
+                video_paths[gato] = video_path
+        logging.debug(f"Crear videos tomó {time.time() - start_time_videos} segundos")
+        
+        cuerpo_email = crear_cuerpo_email(resumen, fotos)
+        print(cuerpo_email)  # También puedes imprimirlo en la consola si lo deseas
+        
+        # Calcular el rango de tiempo para el asunto del email
+        hora_fin = datetime.now()
+        hora_inicio = hora_fin - timedelta(hours=24)
+        asunto = f"Resumen de Gatos Detectados desde {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')} hasta {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}"
+
+        # Lista de destinatarios
+        destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
+
+        # Enviar el resumen por correo electrónico
+        logging.debug("Enviando el resumen por correo electrónico...")
+        send_email(
+            subject=asunto,
+            body=cuerpo_email,
+            fotos=fotos,
+            destinatarios=destinatarios
+        )
+        logging.debug("Proceso completado")
