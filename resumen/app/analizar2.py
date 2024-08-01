@@ -205,16 +205,6 @@ def send_email(subject, body, fotos, destinatarios):
 
 if __name__ == "__main__":
     while True:
-        # Comprobar la hora actual
-        now = datetime.now()
-        # Calcular la hora de la próxima ejecución (mañana a las 7 AM)
-        next_run = now.replace(hour=7, minute=0, second=0, microsecond=0) + timedelta(days=1)
-
-        # Dormir hasta la próxima ejecución
-        time_to_sleep = (next_run - now).total_seconds()
-        logging.debug(f"Dormir hasta la próxima ejecución: {time_to_sleep} segundos")
-        time.sleep(time_to_sleep)
-
         directorio_base = r'/media/frigate/clasificado'
         directorio_originales = r'/media/frigate/originales'
         directorio_videos = r'/media/frigate/videos'
@@ -257,3 +247,12 @@ if __name__ == "__main__":
             destinatarios=destinatarios
         )
         logging.debug("Proceso completado")
+                # Comprobar la hora actual
+        now = datetime.now()
+        # Calcular la hora de la próxima ejecución (mañana a las 7 AM)
+        next_run = now.replace(hour=7, minute=0, second=0, microsecond=0) + timedelta(days=1)
+
+        # Dormir hasta la próxima ejecución
+        time_to_sleep = (next_run - now).total_seconds()
+        logging.debug(f"Dormir hasta la próxima ejecución: {time_to_sleep} segundos")
+        time.sleep(time_to_sleep)
