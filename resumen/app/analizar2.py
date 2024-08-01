@@ -204,9 +204,9 @@ def send_email(subject, body, fotos):
         logging.error(f"General error sending email: {str(e)}")
 
 if __name__ == "__main__":
-    directorio_base = r'\media\frigate\clasificado'
-    directorio_originales = r'\media\frigate\originales'
-    directorio_videos = r'\media\frigate\videos'
+    directorio_base = r'/media/frigate/clasificado'
+    directorio_originales = r'/media/frigate/originales'
+    directorio_videos = r'/media/frigate/videos'
     
     # Cargar imágenes originales
     logging.debug("Cargando imágenes originales...")
