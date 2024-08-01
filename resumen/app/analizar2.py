@@ -5,8 +5,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
-from email.mime.base import MIMEBase
-from email import encoders
 import cv2
 import time
 
@@ -150,8 +148,8 @@ def crear_cuerpo_email(resumen, fotos):
             
             if fotos[gato]:
                 html += "<h3>Fotos:</h3>"
-                # Incluir todas las fotos por gato
-                for foto in fotos[gato]:
+                # Incluir hasta 5 fotos por gato
+                for foto in fotos[gato][:5]:
                     html += f'<img src="cid:{os.path.basename(foto)}" style="max-width:200px; margin:10px;"/><br>'
         else:
             html += f"<h2>{gato} no estuvo en ninguna cámara en las últimas 24 horas.</h2>"
@@ -176,7 +174,7 @@ def send_email(subject, body, fotos):
     message.attach(MIMEText(body, "html"))
 
     for gato, paths in fotos.items():
-        for file_path in paths:  # Adjuntar todas las fotos involucradas en el resumen
+        for file_path in paths[:5]:  # Adjuntar hasta 5 fotos por gato
             try:
                 with open(file_path, "rb") as attachment:
                     img_data = attachment.read()
