@@ -1,6 +1,6 @@
 {
 	"name": "Resumen",
-	"version": "1.0",
+	"version": "1.1",
 	"slug": "Resumen",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
