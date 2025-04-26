@@ -27,7 +27,8 @@
 		"media:rw"
 	],
 	"options": {
-		"data_path": "/config/resumen",
+		"data_path": "/config/resumen",    
+		"openai_api_key": "PON_AQUI_TU_API_KEY",
 		"interval": 3600,
 		"socat": {
 			"enabled": false,
@@ -39,8 +40,9 @@
 		"mqtt": {},
 		"serial": {}
 	},
-	"schema": {
+	"schema": {		
 		"data_path": "str",
+		"openai_api_key": "str",
 		"interval": "int?",
 		"socat": {
 			"enabled": "bool?",

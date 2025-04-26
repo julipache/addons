@@ -12,6 +12,8 @@ from email.mime.base import MIMEBase
 from email import encoders
 import cv2
 from openai import OpenAI
+import json
+
 
 # Configuracion de logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,7 +27,10 @@ directorio_media_ezviz = '/media/ezviz_gatitos'
 sender_email = "75642e001@smtp-brevo.com"
 password = "8nP5LXfVT1tmvCgW"
 destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
-api_key = "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"  # Sustituir con tu clave de API de OpenAI
+with open('/data/options.json', 'r') as f:
+    options = json.load(f)
+
+openai_api_key = options.get('openai_api_key')
 
 # Utilidades
 
