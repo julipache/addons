@@ -1,4 +1,5 @@
 import os
+import shutil
 import logging
 import time
 from datetime import datetime, timedelta
@@ -18,6 +19,7 @@ directorio_base = '/media/frigate/clasificado'
 directorio_originales = '/media/frigate/originales'
 directorio_videos = '/media/frigate/videos'
 directorio_ezviz = '/config/ezviz_gatitos'
+directorio_media_ezviz = '/media/ezviz_gatitos'
 sender_email = "75642e001@smtp-brevo.com"
 password = "8nP5LXfVT1tmvCgW"
 destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
@@ -84,6 +86,13 @@ def crear_video_ezviz():
     imagenes = sorted([os.path.join(directorio_ezviz, img) for img in os.listdir(directorio_ezviz) if img.lower().endswith('.jpg')], key=lambda x: os.path.getmtime(x))
     return crear_video("ezviz_gatitos", imagenes, directorio_videos) if imagenes else None
 
+def mover_video_a_media(video_path):
+    os.makedirs(directorio_media_ezviz, exist_ok=True)
+    destino = os.path.join(directorio_media_ezviz, "ezviz_gatitos.mp4")
+    shutil.copy(video_path, destino)
+    logging.info(f"Vídeo movido a {destino}")
+    return destino
+
 def crear_cuerpo_email(resumen):
     html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>"""
     for gato, detecciones in resumen.items():
@@ -97,7 +106,7 @@ def crear_cuerpo_email(resumen):
     html += """</body></html>"""
     return html
 
-def send_email(subject, body, fotos, destinatarios, videos_adicionales=[]):
+def send_email(subject, body, fotos, destinatarios):
     message = MIMEMultipart()
     message['From'] = sender_email
     message['To'] = ", ".join(destinatarios)
@@ -116,18 +125,6 @@ def send_email(subject, body, fotos, destinatarios, videos_adicionales=[]):
             except Exception as e:
                 logging.error(f"Error adjuntando imagen {file_path}: {e}")
 
-    # Adjuntar videos
-    for video_path in videos_adicionales:
-        try:
-            with open(video_path, 'rb') as f:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(f.read())
-                encoders.encode_base64(part)
-                part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(video_path)}"')
-                message.attach(part)
-        except Exception as e:
-            logging.error(f"Error adjuntando video {video_path}: {e}")
-
     try:
         server = smtplib.SMTP('smtp-relay.brevo.com', 587)
         server.starttls()
@@ -138,27 +135,54 @@ def send_email(subject, body, fotos, destinatarios, videos_adicionales=[]):
     except Exception as e:
         logging.error(f"Error enviando email: {e}")
 
+def send_email_video(subject, destinatarios, link_video):
+    message = MIMEMultipart()
+    message['From'] = sender_email
+    message['To'] = ", ".join(destinatarios)
+    message['Subject'] = subject
+    body = f"""
+    <html><body>
+    <h1>Vídeo de movimiento EZVIZ</h1>
+    <p>Puedes ver el vídeo de las últimas 24 horas en el siguiente enlace:</p>
+    <a href="{link_video}">Ver vídeo</a>
+    </body></html>
+    """
+    message.attach(MIMEText(body, 'html'))
+
+    try:
+        server = smtplib.SMTP('smtp-relay.brevo.com', 587)
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, destinatarios, message.as_string())
+        server.quit()
+        logging.info("Email del vídeo EZVIZ enviado correctamente")
+    except Exception as e:
+        logging.error(f"Error enviando email de vídeo EZVIZ: {e}")
+
 # Ejecución principal
 if __name__ == "__main__":
     logging.info("Generando resumen...")
     resumen, fotos, videos_gatos = resumen_gatos()
     if any(resumen.values()):
         logging.info("Creando videos de gatos...")
-        video_paths = []
         for gato, imagenes in videos_gatos.items():
-            path_video = crear_video(gato, imagenes, directorio_videos)
-            if path_video:
-                video_paths.append(path_video)
+            crear_video(gato, imagenes, directorio_videos)
 
         logging.info("Creando video de EZVIZ...")
-        video_ezviz = crear_video_ezviz()
-        if video_ezviz:
-            video_paths.append(video_ezviz)
+        video_ezviz_path = crear_video_ezviz()
+        if video_ezviz_path:
+            mover_video_a_media(video_ezviz_path)
+            link_video = "https://junucasa.duckdns.org:10/media-source/local/ezviz_gatitos/ezviz_gatitos.mp4"
 
         cuerpo = crear_cuerpo_email(resumen)
-        asunto = f"Resumen de Gatos - {datetime.now().strftime('%Y-%m-%d')}"
+        asunto = f"Resumen de gatos - {datetime.now().strftime('%Y-%m-%d')}"
 
-        logging.info("Enviando email...")
-        send_email(asunto, cuerpo, fotos, destinatarios, video_paths)
+        logging.info("Enviando email de resumen...")
+        send_email(asunto, cuerpo, fotos, destinatarios)
+
+        if video_ezviz_path:
+            asunto_video = f"Video de movimiento EZVIZ - {datetime.now().strftime('%Y-%m-%d')}"
+            logging.info("Enviando email del vídeo EZVIZ...")
+            send_email_video(asunto_video, destinatarios, link_video)
     else:
         logging.info("No hay actividad en las últimas 24 horas. No se enviará correo.")
