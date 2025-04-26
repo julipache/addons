@@ -115,26 +115,38 @@ def analizar_imagen_con_openai(imagen_path, client):
     )
     return response.choices[0].message.content
 
-def crear_cuerpo_email(resumen, resumen_openai):
+def crear_cuerpo_email(resumen, resumen_openai, fotos):
     html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>"""
     for gato, detecciones in resumen.items():
+        html += f"<h2>{gato}</h2>"
         if detecciones:
-            html += f"<h2>{gato}</h2><ul>"
+            html += "<ul>"
             for fecha, camara in detecciones:
                 html += f"<li>{camara} a las {fecha.strftime('%Y-%m-%d %H:%M:%S')}</li>"
             html += "</ul>"
         else:
-            html += f"<h2>{gato}: sin actividad reciente</h2>"
+            html += f"<p>{gato}: sin actividad reciente</p>"
+
+        # Añadir fotos de cada gato justo después
+        if fotos.get(gato):
+            html += "<h3>Fotos:</h3>"
+            for file_path in fotos[gato][:5]:
+                cid = os.path.basename(file_path)
+                html += f'<img src="cid:{cid}" style="max-width:200px; margin:5px;"/>'
+
     html += f"<h2>Resumen de análisis de imágenes:</h2><p>{resumen_openai}</p>"
     html += """</body></html>"""
     return html
 
 def send_email(subject, body, fotos, destinatarios):
-    message = MIMEMultipart()
+    message = MIMEMultipart('related')
     message['From'] = sender_email
     message['To'] = ", ".join(destinatarios)
     message['Subject'] = subject
-    message.attach(MIMEText(body, 'html'))
+
+    message_alt = MIMEMultipart('alternative')
+    message.attach(message_alt)
+    message_alt.attach(MIMEText(body, 'html'))
 
     for paths in fotos.values():
         for file_path in paths[:5]:
@@ -153,6 +165,9 @@ def send_email(subject, body, fotos, destinatarios):
         server.login(sender_email, password)
         server.sendmail(sender_email, destinatarios, message.as_string())
         server.quit()
+        logging.info("Email enviado correctamente")
+    except Exception as e:
+        logging.error(f"Error enviando email: {e}")
         logging.info("Email enviado correctamente")
     except Exception as e:
         logging.error(f"Error enviando email: {e}")
@@ -206,18 +221,4 @@ if __name__ == "__main__":
         video_ezviz_path = crear_video_ezviz()
         if video_ezviz_path:
             mover_video_a_media(video_ezviz_path)
-            link_video = "https://junucasa.duckdns.org:10/media-source/local/ezviz_gatitos/ezviz_gatitos.mp4"
-
-        cuerpo = crear_cuerpo_email(resumen, resumen_openai)
-        asunto = f"Resumen de gatos - {datetime.now().strftime('%Y-%m-%d')}"
-
-        logging.info("Enviando email de resumen...")
-        send_email(asunto, cuerpo, fotos, destinatarios)
-
-        if video_ezviz_path:
-            asunto_video = f"Video de movimiento EZVIZ - {datetime.now().strftime('%Y-%m-%d')}
-"
-            logging.info("Enviando email del vídeo EZVIZ...")
-            send_email_video(asunto_video, destinatarios, link_video)
-    else:
-        logging.info("No hay actividad en las últimas 24 horas. No se enviará correo.")
+            link_video = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
