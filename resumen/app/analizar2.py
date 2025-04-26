@@ -30,7 +30,7 @@ destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
 with open('/data/options.json', 'r') as f:
     options = json.load(f)
 
-openai_api_key = options.get('openai_api_key')
+openai_api_k = options.get('openai_api_key')
 
 # Utilidades
 
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     logging.info("Generando resumen...")
     resumen, fotos, videos_gatos = resumen_gatos()
     if any(resumen.values()):
-        client = OpenAI(api_key=openai_api_key)
+        client = OpenAI(api_key=openai_api_k)
         logging.info("Analizando imágenes con OpenAI...")
         analisis_imagenes = []
         for paths in fotos.values():
