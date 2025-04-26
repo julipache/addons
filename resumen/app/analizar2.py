@@ -2,6 +2,7 @@ import os
 import shutil
 import logging
 import time
+import base64
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -10,6 +11,7 @@ from email.mime.image import MIMEImage
 from email.mime.base import MIMEBase
 from email import encoders
 import cv2
+from openai import OpenAI
 
 # Configuracion de logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -23,6 +25,7 @@ directorio_media_ezviz = '/media/ezviz_gatitos'
 sender_email = "75642e001@smtp-brevo.com"
 password = "8nP5LXfVT1tmvCgW"
 destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
+api_key = "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"  # Sustituir con tu clave de API de OpenAI
 
 # Utilidades
 
@@ -93,7 +96,26 @@ def mover_video_a_media(video_path):
     logging.info(f"Vídeo movido a {destino}")
     return destino
 
-def crear_cuerpo_email(resumen):
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+def analizar_imagen_con_openai(imagen_path, client):
+    base64_image = encode_image(imagen_path)
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Eres un experto en identificar gatos, colores, otros animales o personas en imágenes."},
+            {"role": "user", "content": [
+                {"type": "text", "text": "Describe todos los animales visibles (gatos, zorros, personas, etc.) y sus colores."},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+            ]}
+        ],
+        max_tokens=500,
+    )
+    return response.choices[0].message.content
+
+def crear_cuerpo_email(resumen, resumen_openai):
     html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>"""
     for gato, detecciones in resumen.items():
         if detecciones:
@@ -103,6 +125,7 @@ def crear_cuerpo_email(resumen):
             html += "</ul>"
         else:
             html += f"<h2>{gato}: sin actividad reciente</h2>"
+    html += f"<h2>Resumen de análisis de imágenes:</h2><p>{resumen_openai}</p>"
     html += """</body></html>"""
     return html
 
@@ -113,7 +136,6 @@ def send_email(subject, body, fotos, destinatarios):
     message['Subject'] = subject
     message.attach(MIMEText(body, 'html'))
 
-    # Adjuntar imágenes
     for paths in fotos.values():
         for file_path in paths[:5]:
             try:
@@ -164,6 +186,18 @@ if __name__ == "__main__":
     logging.info("Generando resumen...")
     resumen, fotos, videos_gatos = resumen_gatos()
     if any(resumen.values()):
+        client = OpenAI(api_key=openai_api_key)
+        logging.info("Analizando imágenes con OpenAI...")
+        analisis_imagenes = []
+        for paths in fotos.values():
+            for img_path in paths[:5]:
+                try:
+                    analisis = analizar_imagen_con_openai(img_path, client)
+                    analisis_imagenes.append(analisis)
+                except Exception as e:
+                    logging.error(f"Error analizando imagen {img_path}: {e}")
+        resumen_openai = " ".join(analisis_imagenes)
+
         logging.info("Creando videos de gatos...")
         for gato, imagenes in videos_gatos.items():
             crear_video(gato, imagenes, directorio_videos)
@@ -174,14 +208,15 @@ if __name__ == "__main__":
             mover_video_a_media(video_ezviz_path)
             link_video = "https://junucasa.duckdns.org:10/media-source/local/ezviz_gatitos/ezviz_gatitos.mp4"
 
-        cuerpo = crear_cuerpo_email(resumen)
+        cuerpo = crear_cuerpo_email(resumen, resumen_openai)
         asunto = f"Resumen de gatos - {datetime.now().strftime('%Y-%m-%d')}"
 
         logging.info("Enviando email de resumen...")
         send_email(asunto, cuerpo, fotos, destinatarios)
 
         if video_ezviz_path:
-            asunto_video = f"Video de movimiento EZVIZ - {datetime.now().strftime('%Y-%m-%d')}"
+            asunto_video = f"Video de movimiento EZVIZ - {datetime.now().strftime('%Y-%m-%d')}
+"
             logging.info("Enviando email del vídeo EZVIZ...")
             send_email_video(asunto_video, destinatarios, link_video)
     else:
