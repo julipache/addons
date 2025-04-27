@@ -32,7 +32,7 @@ with open('/data/options.json', 'r') as f:
     
     
 
-openai_api_k = options.get('openai_api_key')
+openai_api_key = options.get('openai_api_key')
 password = options.get('emailpass')
 
 # Utilidades
