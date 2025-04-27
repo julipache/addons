@@ -28,7 +28,7 @@
 	],
 	"options": {
 		"data_path": "/config/resumen",    
-		"openai_api_key": "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",
+		"openai_api_key": "PON_AQUI_TU_API_KEY",
 		"emailpass": "PON_AQUI_TU_API_KEY",
 		"interval": 3600,
 		"socat": {
