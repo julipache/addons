@@ -25,12 +25,15 @@ directorio_videos = '/media/frigate/videos'
 directorio_ezviz = '/config/ezviz_gatitos'
 directorio_media_ezviz = '/media/ezviz_gatitos'
 sender_email = "75642e001@smtp-brevo.com"
-password = "8nP5LXfVT1tmvCgW"
+
 destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
 with open('/data/options.json', 'r') as f:
     options = json.load(f)
+    
+    
 
-
+openai_api_k = options.get('openai_api_key')
+password = options.get('emailpass')
 
 # Utilidades
 
@@ -206,7 +209,7 @@ if __name__ == "__main__":
     logging.info("Generando resumen...")
     resumen, fotos, videos_gatos = resumen_gatos()
     if any(resumen.values()):
-        client = OpenAI(api_key=openai_api_k)
+        client = OpenAI(api_key=openai_api_key)
         logging.info("Analizando imágenes con OpenAI...")
         analisis_imagenes = []
         for paths in fotos.values():
