@@ -30,7 +30,7 @@ destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
 with open('/data/options.json', 'r') as f:
     options = json.load(f)
 
-openai_api_k = options.get('openai_api_key')
+
 
 # Utilidades
 
