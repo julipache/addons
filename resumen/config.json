@@ -44,7 +44,7 @@
 	"schema": {		
 		"data_path": "str",
 		"openai_api_key": "str",
-		"emailpass": "8nP5LXfVT1tmvCgW",
+		"emailpass": "str",
 		"interval": "int?",
 		"socat": {
 			"enabled": "bool?",
