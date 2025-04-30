@@ -76,7 +76,7 @@ def analizar_imagenes_openai(directorio_entrada, api_key):
             response = httpx.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers=headers,
-                json={"model": "gpt-4-vision-preview", "messages": prompt, "max_tokens": 500},
+                json={"model": "gpt-4o", "messages": prompt, "max_tokens": 500},
                 timeout=60
             )
             if response.status_code == 200:
