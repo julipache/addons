@@ -1,6 +1,6 @@
 {
 	"name": "resumen",
-	"version": "11.6",
+	"version": "11.7",
 	"slug": "resumen",
 	"description": "A Home Assistant add-on that analyzes images and classifies them using a resumenFlow model.",
 	"uart": true,
