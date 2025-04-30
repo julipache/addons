@@ -3,8 +3,19 @@ import logging
 import base64
 from datetime import datetime, timedelta
 from openai import OpenAI
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 
-# ... (otras importaciones y configuraciones sin cambio)
+# ... (otras configuraciones)
+
+# Función para codificar imágenes
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
 
 def analizar_imagen_con_openai(imagen_path, client):
     base64_image = encode_image(imagen_path)
@@ -29,19 +40,71 @@ def analizar_imagen_con_openai(imagen_path, client):
         return "(error en análisis de imagen)"
 
 
+def crear_cuerpo_email(resumen, resumen_openai, fotos):
+    html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>"""
+    for gato, detecciones in resumen.items():
+        html += f"<h2>{gato}</h2>"
+        if detecciones:
+            html += "<ul>"
+            for fecha, camara in detecciones:
+                html += f"<li>{camara} a las {fecha.strftime('%Y-%m-%d %H:%M:%S')}</li>"
+            html += "</ul>"
+        else:
+            html += f"<p>{gato}: sin actividad reciente</p>"
+
+        if fotos.get(gato):
+            html += "<h3>Fotos:</h3>"
+            for file_path in fotos[gato][:5]:
+                cid = os.path.basename(file_path)
+                html += f'<img src="cid:{cid}" style="max-width:200px; margin:5px;"/>'
+
+    html += f"<h2>Resumen de análisis de EZVIZ:</h2><pre>{resumen_openai}</pre>"
+    html += """</body></html>"""
+    return html
+
+
+def send_email(subject, body, fotos, destinatarios):
+    message = MIMEMultipart('related')
+    message['From'] = sender_email
+    message['To'] = ", ".join(destinatarios)
+    message['Subject'] = subject
+
+    message_alt = MIMEMultipart('alternative')
+    message.attach(message_alt)
+    message_alt.attach(MIMEText(body, 'html'))
+
+    for paths in fotos.values():
+        for file_path in paths[:5]:
+            try:
+                with open(file_path, 'rb') as f:
+                    img = MIMEImage(f.read())
+                    img.add_header('Content-ID', f"<{os.path.basename(file_path)}>")
+                    img.add_header('Content-Disposition', 'inline', filename=os.path.basename(file_path))
+                    message.attach(img)
+            except Exception as e:
+                logging.error(f"Error adjuntando imagen {file_path}: {e}")
+
+    try:
+        server = smtplib.SMTP('smtp-relay.brevo.com', 587)
+        server.starttls()
+        server.login(sender_email, password)
+        server.sendmail(sender_email, destinatarios, message.as_string())
+        server.quit()
+        logging.info("Email enviado correctamente")
+    except Exception as e:
+        logging.error(f"Error enviando email: {e}")
+
+
 if __name__ == "__main__":
     logging.info("Generando resumen...")
     resumen, fotos, videos_gatos = resumen_gatos()
-    if any(resumen.values()):
-        cuerpo_email = crear_cuerpo_email(resumen, "(análisis solo para EZVIZ más abajo)", fotos)
-        send_email("Resumen de actividad de gatos", cuerpo_email, fotos, destinatarios)
 
     logging.info("Creando video de EZVIZ...")
     video_ezviz_path = crear_video_ezviz()
+    resumen_openai = ""
     if video_ezviz_path:
         mover_video_a_media(video_ezviz_path)
 
-        # Analizar solo imágenes de EZVIZ con OpenAI
         client = OpenAI(api_key=openai_api_key)
         logging.info("Analizando imágenes de EZVIZ con OpenAI...")
         ezviz_images = sorted([
@@ -60,35 +123,9 @@ if __name__ == "__main__":
 
         resumen_openai = "\n".join(analisis_ezviz)
 
-        # Enviar email con resumen de EZVIZ
-        link_video = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
-        send_email_video("Vídeo de movimiento EZVIZ", destinatarios, link_video, resumen_openai)
+    if any(resumen.values()):
+        cuerpo_email = crear_cuerpo_email(resumen, resumen_openai, fotos)
+        send_email("Resumen de actividad de gatos", cuerpo_email, fotos, destinatarios)
 
 
-# Función modificada para incluir resumen_openai
-
-def send_email_video(subject, destinatarios, link_video, resumen_openai):
-    message = MIMEMultipart()
-    message['From'] = sender_email
-    message['To'] = ", ".join(destinatarios)
-    message['Subject'] = subject
-    body = f"""
-    <html><body>
-    <h1>Vídeo de movimiento EZVIZ</h1>
-    <p>Puedes ver el vídeo de las últimas 24 horas en el siguiente enlace:</p>
-    <a href="{link_video}">Ver vídeo</a>
-    <h2>Resumen visual generado por IA:</h2>
-    <pre>{resumen_openai}</pre>
-    </body></html>
-    """
-    message.attach(MIMEText(body, 'html'))
-
-    try:
-        server = smtplib.SMTP('smtp-relay.brevo.com', 587)
-        server.starttls()
-        server.login(sender_email, password)
-        server.sendmail(sender_email, destinatarios, message.as_string())
-        server.quit()
-        logging.info("Email del vídeo EZVIZ enviado correctamente")
-    except Exception as e:
-        logging.error(f"Error enviando email de vídeo EZVIZ: {e}")
+# Email video EZVIZ opcionalmente eliminado si no es necesario
