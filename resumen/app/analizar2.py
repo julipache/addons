@@ -94,7 +94,7 @@ def analizar_imagen_con_openai(imagen_path, client):
         {"role": "system", "content": "Eres un experto en identificar gatos, colores, otros animales o personas en imágenes."},
         {"role": "user", "content": [
             {"type": "text", "text": "Describe todos los animales visibles (gatos, zorros, personas, etc.) y sus colores."},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,[imagen codificada omitida]"}}
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
         ]}
     ]
     try:
