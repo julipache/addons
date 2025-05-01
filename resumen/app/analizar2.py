@@ -4,12 +4,12 @@ import cv2
 import smtplib
 import json
 import base64
-import httpx
 import logging
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from openai import OpenAI
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -53,50 +53,39 @@ def crear_video(nombre, imagenes, directorio_videos):
     return video_path
 
 def resumen_gatos_en_24_horas(directorio_base, imagenes_originales):
-    resumen = {}
-    fotos = {}
-    videos = {}
+    resumen, fotos, videos = {}, {}, {}
     for gato in os.listdir(directorio_base):
         path_gato = os.path.join(directorio_base, gato)
         if os.path.isdir(path_gato) and gato != "dudosos":
-            resumen[gato] = []
-            fotos[gato] = []
-            videos[gato] = []
+            resumen[gato], fotos[gato], videos[gato] = [], [], []
             for imagen in os.listdir(path_gato):
                 path_imagen = os.path.join(path_gato, imagen)
                 if os.path.isfile(path_imagen) and es_reciente(path_imagen):
                     camara = obtener_camara_de_imagen(imagen)
                     fecha_modificacion = datetime.fromtimestamp(os.path.getmtime(path_imagen))
                     resumen[gato].append((fecha_modificacion, camara))
-                    path_imagen_original = buscar_imagen_original(imagen, imagenes_originales)
-                    if path_imagen_original:
-                        fotos[gato].append(path_imagen_original)
-                        videos[gato].append(path_imagen_original)
-                    else:
-                        fotos[gato].append(path_imagen)
-                        videos[gato].append(path_imagen)
+                    original = buscar_imagen_original(imagen, imagenes_originales)
+                    fotos[gato].append(original if original else path_imagen)
+                    videos[gato].append(original if original else path_imagen)
     for gato in resumen:
         resumen[gato].sort()
-        fotos[gato] = [foto for _, foto in sorted(zip([fecha for fecha, _ in resumen[gato]], fotos[gato]))]
+        fotos[gato] = [f for _, f in sorted(zip([d[0] for d in resumen[gato]], fotos[gato]))]
         videos[gato].sort(key=lambda x: os.path.getmtime(x))
     return resumen, fotos, videos
 
 def crear_cuerpo_email_gatos(resumen, fotos):
-    html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>"""
-    html += """<h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
-    <a href="https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate%2Fvideos">Ir a la aplicación</a>"""
+    html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>
+    <h3>Accede a más detalles en la aplicación de Home Assistant:</h3>
+    <a href='https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Ffrigate%2Fvideos'>Ir a la aplicación</a>"""
     for gato, detecciones in resumen.items():
-        if detecciones:
-            html += f"<h2>{gato}</h2><ul>"
-            for fecha_modificacion, camara in detecciones:
-                html += f"<li>{camara} a las {fecha_modificacion.strftime('%Y-%m-%d %H:%M:%S')}</li>"
-            html += "</ul><h3>Fotos:</h3><div style='display:flex;flex-wrap:wrap;'>"
-            for foto in fotos[gato][:5]:
-                html += f'<div style="margin:5px;"><img src="cid:{os.path.basename(foto)}" style="max-width:200px;"/></div>'
-            html += "</div>"
-        else:
-            html += f"<h2>{gato} no estuvo en ninguna cámara en las últimas 24 horas.</h2>"
-    html += """</body></html>"""
+        html += f"<h2>{gato}</h2><ul>"
+        for fecha, cam in detecciones:
+            html += f"<li>{cam} a las {fecha.strftime('%Y-%m-%d %H:%M:%S')}</li>"
+        html += "</ul><h3>Fotos:</h3><div style='display:flex;flex-wrap:wrap;'>"
+        for foto in fotos[gato][:5]:
+            html += f'<div style="margin:5px;"><img src="cid:{os.path.basename(foto)}" style="max-width:200px;"/></div>'
+        html += "</div>"
+    html += "</body></html>"
     return html
 
 def crear_video_ezviz(directorio_entrada, directorio_salida):
@@ -105,7 +94,6 @@ def crear_video_ezviz(directorio_entrada, directorio_salida):
 
 def analizar_imagenes_openai(directorio_entrada, api_key):
     resultados = []
-    from openai import OpenAI
     client = OpenAI(api_key=api_key)
     for imagen_path in sorted(os.listdir(directorio_entrada)):
         if not imagen_path.lower().endswith(".jpg"):
@@ -126,16 +114,26 @@ def analizar_imagenes_openai(directorio_entrada, api_key):
                 max_tokens=500
             )
             descripcion = response.choices[0].message.content
-            resultados.append((imagen_path, descripcion))
+            resultados.append(descripcion)
         except Exception as e:
-            resultados.append((imagen_path, f"Error: {str(e)}"))
+            resultados.append(f"Error: {str(e)}")
     return resultados
 
-def generar_email_ezviz(resultados):
-    html = """<html><body><h1>Resumen de análisis de imágenes Ezviz</h1>"""
-    for imagen, descripcion in resultados:
-        html += f"<h3>{imagen}</h3><p>{descripcion}</p><hr>"
-    html += """</body></html>"""
+def resumen_global_openai(resultados, video_url):
+    texto_completo = " ".join(resultados).lower()
+    gatos = texto_completo.count("gato")
+    personas = texto_completo.count("persona")
+    animales = texto_completo.count("perro") + texto_completo.count("zorro") + texto_completo.count("conejo")
+    html = f"""<html><body>
+    <h1>Resumen Global del Análisis Ezviz</h1>
+    <ul>
+        <li>Gatos detectados (menciones): {gatos}</li>
+        <li>Personas detectadas (menciones): {personas}</li>
+        <li>Otros animales (menciones): {animales}</li>
+    </ul>
+    <h3>Ver el vídeo generado:</h3>
+    <a href="{video_url}">{video_url}</a>
+    </body></html>"""
     return html
 
 def send_email(subject, body, destinatarios, imagenes_embed=None):
@@ -149,8 +147,8 @@ def send_email(subject, body, destinatarios, imagenes_embed=None):
     if imagenes_embed:
         for imagen_path in imagenes_embed:
             try:
-                with open(imagen_path, "rb") as attachment:
-                    img_data = attachment.read()
+                with open(imagen_path, "rb") as f:
+                    img_data = f.read()
                     img = MIMEImage(img_data)
                     img.add_header('Content-ID', f"<{os.path.basename(imagen_path)}>")
                     img.add_header('Content-Disposition', 'inline', filename=os.path.basename(imagen_path))
@@ -172,7 +170,7 @@ if __name__ == "__main__":
         options = json.load(f)
     api_key = options.get("openai_api_key")
 
-    # EMAIL 1: RESUMEN DE GATOS
+    # EMAIL 1: RESUMEN GATOS
     directorio_base = "/media/frigate/clasificado"
     directorio_originales = "/media/frigate/originales"
     directorio_videos = "/media/frigate/videos"
@@ -186,11 +184,12 @@ if __name__ == "__main__":
     imagenes_email = sum([fotos[g][:5] for g in fotos], [])
     send_email(asunto_gatos, cuerpo_email_gatos, destinatarios, imagenes_email)
 
-    # EMAIL 2: RESUMEN EZVIZ
+    # EMAIL 2: RESUMEN OPENAI + VIDEO EZVIZ
     directorio_ezviz = "/config/ezviz_gatitos"
     directorio_media_ezviz = "/media/ezviz_gatitos"
-    crear_video_ezviz(directorio_ezviz, directorio_media_ezviz)
-    resultados_ezviz = analizar_imagenes_openai(directorio_ezviz, api_key)
-    cuerpo_email_ezviz = generar_email_ezviz(resultados_ezviz)
-    asunto_ezviz = f"Análisis Ezviz - {datetime.now().strftime('%Y-%m-%d')}"
+    video_path = crear_video_ezviz(directorio_ezviz, directorio_media_ezviz)
+    resultados_openai = analizar_imagenes_openai(directorio_ezviz, api_key)
+    video_url = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
+    cuerpo_email_ezviz = resumen_global_openai(resultados_openai, video_url)
+    asunto_ezviz = f"Resumen Ezviz OpenAI - {datetime.now().strftime('%Y-%m-%d')}"
     send_email(asunto_ezviz, cuerpo_email_ezviz, destinatarios)
