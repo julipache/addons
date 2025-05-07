@@ -1,4 +1,6 @@
 import os
+import random
+import string
 import time
 import cv2
 import smtplib
@@ -12,6 +14,12 @@ from email.mime.image import MIMEImage
 from openai import OpenAI
 
 logging.basicConfig(level=logging.DEBUG)
+
+def generar_nombre_unico(base="video"):
+    fecha = datetime.now().strftime('%Y%m%d')
+    sufijo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"{base}_{fecha}_{sufijo}"
+
 
 def es_reciente(file_path, horas=24):
     tiempo_limite = datetime.now() - timedelta(hours=horas)
@@ -72,6 +80,12 @@ def resumen_gatos_en_24_horas(directorio_base, imagenes_originales):
         fotos[gato] = [f for _, f in sorted(zip([d[0] for d in resumen[gato]], fotos[gato]))]
         videos[gato].sort(key=lambda x: os.path.getmtime(x))
     return resumen, fotos, videos
+    
+def generar_asunto_personalizado(base="Resumen"):
+    fecha = datetime.now().strftime('%Y%m%d')
+    sufijo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"{base} [{fecha}-{sufijo}]"
+
 
 def crear_cuerpo_email_gatos(resumen, fotos):
     html = """<html><body><h1>Resumen de Gatos Detectados en las Últimas 24 Horas</h1>
@@ -90,15 +104,19 @@ def crear_cuerpo_email_gatos(resumen, fotos):
 
 def crear_video_ezviz(directorio_entrada, directorio_salida):
     imagenes = [os.path.join(directorio_entrada, f) for f in sorted(os.listdir(directorio_entrada)) if f.lower().endswith('.jpg')]
-    return crear_video("ezviz_gatos", imagenes, directorio_salida)
+    nombre_video = generar_nombre_unico("ezviz_gatos")
+    return crear_video(nombre_video, imagenes, directorio_salida)
 
-def analizar_imagenes_openai(directorio_entrada, api_key):
+def analizar_imagenes_openai(directorio_entrada, api_key, horas=24):
     resultados = []
     client = OpenAI(api_key=api_key)
+    limite_tiempo = datetime.now() - timedelta(hours=horas)
     for imagen_path in sorted(os.listdir(directorio_entrada)):
         if not imagen_path.lower().endswith(".jpg"):
             continue
         full_path = os.path.join(directorio_entrada, imagen_path)
+        if datetime.fromtimestamp(os.path.getmtime(full_path)) < limite_tiempo:
+            continue
         with open(full_path, "rb") as img_file:
             b64_img = base64.b64encode(img_file.read()).decode('utf-8')
         try:
@@ -179,9 +197,15 @@ if __name__ == "__main__":
     for gato, imagenes in videos.items():
         crear_video(gato, imagenes, directorio_videos)
     cuerpo_email_gatos = crear_cuerpo_email_gatos(resumen, fotos)
-    asunto_gatos = f"Resumen de Gatos - {datetime.now().strftime('%Y-%m-%d')}"
+    asunto_gatos = generar_asunto_personalizado("Gatos")
     destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
-    imagenes_email = sum([fotos[g][:5] for g in fotos], [])
+    imagenes_email = []
+    for g in fotos:
+        if any("comedero" in os.path.basename(f).lower() for f in fotos[g]):
+            comedero_imgs = [f for f in fotos[g] if "comedero" in os.path.basename(f).lower()]
+            imagenes_email.extend(comedero_imgs[:5])
+        else:
+            imagenes_email.extend(fotos[g][:2])
     send_email(asunto_gatos, cuerpo_email_gatos, destinatarios, imagenes_email)
 
     # EMAIL 2: RESUMEN OPENAI + VIDEO EZVIZ
@@ -191,5 +215,5 @@ if __name__ == "__main__":
     resultados_openai = analizar_imagenes_openai(directorio_ezviz, api_key)
     video_url = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
     cuerpo_email_ezviz = resumen_global_openai(resultados_openai, video_url)
-    asunto_ezviz = f"Resumen Ezviz OpenAI - {datetime.now().strftime('%Y-%m-%d')}"
+    asunto_ezviz = generar_asunto_personalizado("Ezviz")
     send_email(asunto_ezviz, cuerpo_email_ezviz, destinatarios)
