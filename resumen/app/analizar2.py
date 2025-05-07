@@ -331,6 +331,10 @@ if __name__ == "__main__":
         video_path, imagenes_ezviz = crear_video_ezviz(directorio_ezviz, directorio_media_ezviz)
 
         logging.debug("Analizando imágenes con OpenAI...")
+        with open("/data/options.json") as f:
+            options = json.load(f)
+        api_key = options.get("openai_api_key")
+
         resultados_openai = analizar_imagenes_openai(directorio_ezviz, api_key)
 
         video_url = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
