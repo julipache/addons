@@ -17,6 +17,73 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
+def generar_nombre_unico(base="video"):
+    fecha = datetime.now().strftime('%Y%m%d')
+    sufijo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"{base}_{fecha}_{sufijo}"
+
+def crear_video_ezviz(directorio_entrada, directorio_salida):
+    imagenes = [
+        os.path.join(directorio_entrada, f)
+        for f in sorted(os.listdir(directorio_entrada))
+        if f.lower().endswith('.jpg') and es_reciente(os.path.join(directorio_entrada, f))
+    ]
+    nombre_video = generar_nombre_unico("ezviz_gatos")
+    return crear_video(nombre_video, imagenes, directorio_salida), imagenes[:5]  # Devuelve vídeo y primeras imágenes
+
+def analizar_imagenes_openai(directorio_entrada, api_key, horas=24):
+    resultados = []
+    client = OpenAI(api_key=api_key)
+    limite_tiempo = datetime.now() - timedelta(hours=horas)
+    for imagen_path in sorted(os.listdir(directorio_entrada)):
+        if not imagen_path.lower().endswith(".jpg"):
+            continue
+        full_path = os.path.join(directorio_entrada, imagen_path)
+        if datetime.fromtimestamp(os.path.getmtime(full_path)) < limite_tiempo:
+            continue
+        with open(full_path, "rb") as img_file:
+            b64_img = base64.b64encode(img_file.read()).decode('utf-8')
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Eres un experto en identificar gatos, colores, otros animales o personas en imágenes."},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": "Describe todos los animales visibles (gatos, zorros, personas, etc.) y sus colores."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}}
+                    ]}
+                ],
+                max_tokens=500
+            )
+            descripcion = response.choices[0].message.content
+            resultados.append(descripcion)
+        except Exception as e:
+            resultados.append(f"Error: {str(e)}")
+    return resultados
+
+def resumen_global_openai(resultados, video_url):
+    texto_completo = " ".join(resultados).lower()
+    gatos = texto_completo.count("gato")
+    personas = texto_completo.count("persona")
+    perros = texto_completo.count("perro")
+    zorros = texto_completo.count("zorro")
+    conejos = texto_completo.count("conejo")
+
+    html = f"""<html><body>
+    <h1>Resumen Global del Análisis Ezviz</h1>
+    <ul>
+        <li>Gatos detectados: {gatos}</li>
+        <li>Personas detectadas: {personas}</li>
+        <li>Perros detectados: {perros}</li>
+        <li>Zorros detectados: {zorros}</li>
+        <li>Conejos detectados: {conejos}</li>
+    </ul>
+    <h3>Ver el vídeo generado:</h3>
+    <a href="{video_url}">{video_url}</a>
+    </body></html>"""
+    return html
+
+
 def es_reciente(file_path, horas=24):
     """
     Verifica si el archivo fue modificado en las últimas 'horas' horas.
@@ -252,6 +319,25 @@ if __name__ == "__main__":
             fotos=fotos,
             destinatarios=destinatarios
         )
+        
+        
+        # EMAIL 2: RESUMEN OPENAI + VIDEO EZVIZ
+        directorio_ezviz = "/config/ezviz_gatitos"
+        directorio_media_ezviz = "/media/ezviz_gatitos"
+
+        logging.debug("Generando vídeo e imágenes recientes de Ezviz...")
+        video_path, imagenes_ezviz = crear_video_ezviz(directorio_ezviz, directorio_media_ezviz)
+
+        logging.debug("Analizando imágenes con OpenAI...")
+        resultados_openai = analizar_imagenes_openai(directorio_ezviz, api_key)
+
+        video_url = "https://junucasa.duckdns.org:10/media-browser/browser/app%2Cmedia-source%3A%2F%2Fmedia_source/%2Cmedia-source%3A%2F%2Fmedia_source%2Flocal%2Fezviz_gatitos"
+        cuerpo_email_ezviz = resumen_global_openai(resultados_openai, video_url)
+
+        asunto_ezviz = f"Ezviz [{datetime.now().strftime('%Y%m%d-%H%M%S')}]"
+        send_email(asunto_ezviz, cuerpo_email_ezviz, destinatarios, imagenes_ezviz)
+
+        
         logging.debug("Proceso completado")
                 # Comprobar la hora actual
         now = datetime.now()
