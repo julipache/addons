@@ -141,13 +141,19 @@ def resumen_global_openai(resultados, video_url):
     texto_completo = " ".join(resultados).lower()
     gatos = texto_completo.count("gato")
     personas = texto_completo.count("persona")
-    animales = texto_completo.count("perro") + texto_completo.count("zorro") + texto_completo.count("conejo")
+    perros = texto_completo.count("perro")
+    zorros = texto_completo.count("zorro")
+    conejos = texto_completo.count("conejo")
+    otros = perros + zorros + conejos
+
     html = f"""<html><body>
     <h1>Resumen Global del Análisis Ezviz</h1>
     <ul>
         <li>Gatos detectados (menciones): {gatos}</li>
         <li>Personas detectadas (menciones): {personas}</li>
-        <li>Otros animales (menciones): {animales}</li>
+        <li>Perros detectados: {perros}</li>
+        <li>Zorros detectados: {zorros}</li>
+        <li>Conejos detectados: {conejos}</li>
     </ul>
     <h3>Ver el vídeo generado:</h3>
     <a href="{video_url}">{video_url}</a>
@@ -201,11 +207,13 @@ if __name__ == "__main__":
     destinatarios = ["julioalberto85@gmail.com", "nuriagiadas@gmail.com"]
     imagenes_email = []
     for g in fotos:
-        if any("comedero" in os.path.basename(f).lower() for f in fotos[g]):
-            comedero_imgs = [f for f in fotos[g] if "comedero" in os.path.basename(f).lower()]
-            imagenes_email.extend(comedero_imgs[:5])
-        else:
-            imagenes_email.extend(fotos[g][:2])
+        comedero_imgs = [f for f in fotos[g] if "comedero" in os.path.basename(f).lower()]
+        otras_imgs = [f for f in fotos[g] if f not in comedero_imgs]
+        seleccionadas = comedero_imgs[:5]
+        if len(seleccionadas) < 5:
+            seleccionadas += otras_imgs[:(5 - len(seleccionadas))]
+        imagenes_email.extend(seleccionadas)
+
     send_email(asunto_gatos, cuerpo_email_gatos, destinatarios, imagenes_email)
 
     # EMAIL 2: RESUMEN OPENAI + VIDEO EZVIZ
