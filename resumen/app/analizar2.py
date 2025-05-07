@@ -1,5 +1,7 @@
 import os
 import logging
+import random
+import string
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
