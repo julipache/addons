@@ -1,4 +1,6 @@
 import os
+import base64
+import json
 import logging
 import random
 import string
@@ -8,7 +10,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import cv2
-import time
 import time
 
 # Configurar logging para consola y archivo
