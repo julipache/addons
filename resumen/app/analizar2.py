@@ -343,7 +343,7 @@ if __name__ == "__main__":
         cuerpo_email_ezviz = resumen_global_openai(resultados_openai, video_url)
 
         asunto_ezviz = f"Ezviz [{datetime.now().strftime('%Y%m%d-%H%M%S')}]"
-        send_email(asunto_ezviz, cuerpo_email_ezviz, destinatarios, imagenes_ezviz)
+        send_email(asunto_ezviz, cuerpo_email_ezviz, {"Ezviz": imagenes_ezviz}, destinatarios)
 
         
         logging.debug("Proceso completado")
