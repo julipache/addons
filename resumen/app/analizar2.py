@@ -1,5 +1,6 @@
 import os
 import base64
+from openai import OpenAI
 import json
 import logging
 import random
