@@ -7,6 +7,7 @@ app = Flask(__name__)
 CLASIFICADO_DIR = "/media/frigate/clasificado"
 ORIGINALES_DIR = "/media/frigate/originales"
 
+# 🔄 Ajustar rutas para Home Assistant ingress
 @app.before_request
 def adjust_ingress_path():
     ingress_path = request.headers.get("X-Ingress-Path")
@@ -18,6 +19,7 @@ def index():
     if not os.path.exists(CLASIFICADO_DIR):
         return "<h2>Error: No se encuentra la carpeta de imágenes 🐾</h2>", 500
 
+    # 🔥 HTML dinámico con galería y popup
     return render_template_string("""
     <!DOCTYPE html>
     <html lang="es">
@@ -85,25 +87,25 @@ def index():
                   const galeria = document.createElement('div');
                   galeria.className = 'galeria';
 
-                  imagenes.slice(0, 10).forEach(img => {
-                    const imgUrl = `${basePath}/media/${gato}/${img.recorte}`;
-                    const originalUrl = `${basePath}/originales/${img.original}`;
-                    const imageEl = document.createElement('img');
-                    imageEl.src = imgUrl;
-                    imageEl.alt = gato;
+                  imagenes.slice(0, 10).forEach(imgName => {
+                    const imgUrl = `${basePath}/media/${gato}/${imgName}`;
+                    const originalUrl = `${basePath}/originales/${imgName}`;
+                    const img = document.createElement('img');
+                    img.src = imgUrl;
+                    img.alt = gato;
 
-                    imageEl.onclick = () => openPopup(originalUrl);
+                    img.onclick = () => openPopup(originalUrl);
 
                     const info = document.createElement('div');
                     info.className = 'foto-info';
-                    const accion = img.recorte.includes('comio') ? '🍽️ Comió' :
-                                   img.recorte.includes('arenero') ? '🪣 Arenero' :
+                    const accion = imgName.includes('comio') ? '🍽️ Comió' :
+                                   imgName.includes('arenero') ? '🪣 Arenero' :
                                    '📸 Detectado';
                     info.textContent = accion;
 
                     const containerImg = document.createElement('div');
                     containerImg.style.textAlign = 'center';
-                    containerImg.appendChild(imageEl);
+                    containerImg.appendChild(img);
                     containerImg.appendChild(info);
 
                     galeria.appendChild(containerImg);
@@ -131,25 +133,24 @@ def index():
     </html>
     """)
 
+@app.route("/api/gatos")
+def lista_gatos():
+    if not os.path.exists(CLASIFICADO_DIR):
+        return jsonify([])
+    gatos = [d for d in os.listdir(CLASIFICADO_DIR) if os.path.isdir(os.path.join(CLASIFICADO_DIR, d))]
+    return jsonify(sorted(gatos))
+
 @app.route("/api/gatos/<gato>")
 def lista_imagenes(gato):
     carpeta = os.path.join(CLASIFICADO_DIR, gato)
     if not os.path.exists(carpeta):
         return jsonify([])
-    imagenes = []
-    for f in sorted(os.listdir(carpeta), reverse=True):
-        if not f.lower().endswith(('.jpg', '.png', '.jpeg')):
-            continue
-        # 🪄 Calcular nombre original quitando -crop
-        original_name = f.replace("-crop", "")
-        # Cambiar extensión si hace falta
-        if not os.path.exists(os.path.join(ORIGINALES_DIR, original_name)):
-            base, _ = os.path.splitext(original_name)
-            for ext in ['.jpg', '.png', '.jpeg']:
-                if os.path.exists(os.path.join(ORIGINALES_DIR, base + ext)):
-                    original_name = base + ext
-                    break
-        imagenes.append({"recorte": f, "original": original_name})
+    imagenes = [
+        f for f in os.listdir(carpeta)
+        if f.lower().endswith(('.jpg', '.png', '.jpeg'))
+        and (gato == "sdg" or "sdg_julieta" not in f)  # ❌ Filtrar sdg_julieta
+    ]
+    imagenes.sort(reverse=True)
     return jsonify(imagenes)
 
 @app.route("/media/<gato>/<filename>")
@@ -161,7 +162,7 @@ def serve_recorte(gato, filename):
 
 @app.route("/originales/<filename>")
 def serve_original(filename):
-    if not os.path.exists(os.path.join(ORIGINALES_DIR, filename)):
+    if not os.path.exists(ORIGINALES_DIR):
         abort(404)
     return send_from_directory(ORIGINALES_DIR, filename)
 
