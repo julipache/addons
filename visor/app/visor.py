@@ -1,131 +1,74 @@
-from flask import Flask, jsonify, send_from_directory, render_template_string, abort, request
-import os
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de gatos</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+    h1 { text-align: center; color: #333; }
+    .gato-container {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;
+    }
+    .gato-card {
+      background: #fff; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      padding: 10px; width: 250px; text-align: center;
+    }
+    .gato-card img {
+      width: 100%; height: auto; border-radius: 8px; object-fit: cover;
+    }
+    .gato-name {
+      font-size: 1.3em; font-weight: bold; margin: 10px 0; color: #007bff;
+    }
+    .gato-info {
+      color: #555; font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 Panel de gatos</h1>
+  <p style="text-align:center;">Selecciona la carpeta raíz donde están las carpetas de cada gato:</p>
+  <div style="text-align:center; margin-bottom: 20px;">
+    <input type="file" webkitdirectory directory multiple onchange="loadGatos(event)">
+  </div>
+  <div id="gatos" class="gato-container"></div>
 
-app = Flask(__name__)
+  <script>
+    function loadGatos(event) {
+      const files = event.target.files;
+      const gatos = {};
 
-# 📂 Ruta donde están las fotos
-MEDIA_DIR = "/media/frigate/clasificado"
-
-# Detectar el prefijo de ingress en Home Assistant
-@app.before_request
-def adjust_ingress_path():
-    ingress_path = request.headers.get("X-Ingress-Path")
-    if ingress_path:
-        app.url_map.script_name = ingress_path
-
-@app.route("/")
-def index():
-    if not os.path.exists(MEDIA_DIR):
-        return "<h2>Error: No se encuentra la carpeta de imágenes 🐾</h2>", 500
-
-    # HTML dinámico que ajusta la ruta base
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8">
-      <title>Panel de gatos 🐾</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-        h1 { text-align: center; color: #333; margin: 20px 0; }
-        .container { display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        .gato-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); width: 95%; max-width: 800px; margin: 10px 0; padding: 15px; }
-        .gato-name { font-size: 1.6em; font-weight: bold; text-align: center; color: #444; margin-bottom: 10px; }
-        .galeria { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-        .galeria img { height: 120px; border-radius: 8px; flex-shrink: 0; object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
-        .galeria img:hover { transform: scale(1.05); }
-        .foto-info { font-size: 0.85em; text-align: center; color: #777; margin-top: 4px; }
-        .empty-msg { text-align: center; color: #999; margin-top: 30px; font-size: 1.2em; }
-      </style>
-    </head>
-    <body>
-      <h1>Panel de gatos 🐾</h1>
-      <div class="container" id="gatos"></div>
-      <script>
-        const basePath = window.location.pathname.replace(/\\/$/, '');
-        fetch(`${basePath}/api/gatos`)
-          .then(res => res.json())
-          .then(gatos => {
-            const container = document.getElementById('gatos');
-            if (!gatos.length) {
-              container.innerHTML = '<div class="empty-msg">No hay fotos clasificadas aún 🐱</div>';
-              return;
-            }
-            gatos.forEach(gato => {
-              fetch(`${basePath}/api/gatos/${gato}`)
-                .then(res => res.json())
-                .then(imagenes => {
-                  const card = document.createElement('div');
-                  card.className = 'gato-card';
-
-                  const nombre = document.createElement('div');
-                  nombre.className = 'gato-name';
-                  nombre.textContent = gato.charAt(0).toUpperCase() + gato.slice(1);
-
-                  const galeria = document.createElement('div');
-                  galeria.className = 'galeria';
-
-                  if (!imagenes.length) {
-                    const empty = document.createElement('div');
-                    empty.className = 'foto-info';
-                    empty.textContent = 'No hay fotos para este gato 🐾';
-                    galeria.appendChild(empty);
-                  } else {
-                    imagenes.slice(0, 10).forEach(imgName => {
-                      const imgUrl = `${basePath}/media/${gato}/${imgName}`;
-                      const img = document.createElement('img');
-                      img.src = imgUrl;
-                      img.alt = gato;
-
-                      const info = document.createElement('div');
-                      info.className = 'foto-info';
-                      const accion = imgName.includes('comio') ? '🍽️ Comió' :
-                                     imgName.includes('arenero') ? '🪣 Arenero' :
-                                     '📸 Detectado';
-                      info.textContent = accion;
-
-                      const containerImg = document.createElement('div');
-                      containerImg.style.textAlign = 'center';
-                      containerImg.appendChild(img);
-                      containerImg.appendChild(info);
-
-                      galeria.appendChild(containerImg);
-                    });
-                  }
-
-                  card.appendChild(nombre);
-                  card.appendChild(galeria);
-                  container.appendChild(card);
-                });
-            });
+      // Agrupa las imágenes por carpeta
+      Array.from(files).forEach(file => {
+        const pathParts = file.webkitRelativePath.split('/');
+        if (pathParts.length >= 2 && file.type.startsWith('image/')) {
+          const gatoName = pathParts[1];
+          if (!gatos[gatoName]) gatos[gatoName] = [];
+          gatos[gatoName].push({
+            name: file.name,
+            url: URL.createObjectURL(file)
           });
-      </script>
-    </body>
-    </html>
-    """)
+        }
+      });
 
-@app.route("/api/gatos")
-def lista_gatos():
-    if not os.path.exists(MEDIA_DIR):
-        return jsonify([])
-    gatos = [d for d in os.listdir(MEDIA_DIR) if os.path.isdir(os.path.join(MEDIA_DIR, d))]
-    return jsonify(gatos)
+      const container = document.getElementById('gatos');
+      container.innerHTML = '';
 
-@app.route("/api/gatos/<gato>")
-def lista_imagenes(gato):
-    carpeta = os.path.join(MEDIA_DIR, gato)
-    if not os.path.exists(carpeta):
-        return jsonify([])
-    imagenes = sorted([f for f in os.listdir(carpeta) if f.lower().endswith(('.jpg', '.png', '.jpeg'))], reverse=True)
-    return jsonify(imagenes)
+      // Muestra cada gato
+      Object.entries(gatos).forEach(([gatoName, images]) => {
+        // Ordena imágenes por nombre (asume que tienen fecha en el nombre)
+        images.sort((a, b) => b.name.localeCompare(a.name)); // más reciente primero
+        const latestImage = images[0].url;
 
-@app.route("/media/<gato>/<filename>")
-def serve_image(gato, filename):
-    carpeta = os.path.join(MEDIA_DIR, gato)
-    if not os.path.exists(carpeta):
-        abort(404)
-    return send_from_directory(carpeta, filename)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8099)
+        const card = document.createElement('div');
+        card.className = 'gato-card';
+        card.innerHTML = `
+          <img src="${latestImage}" alt="${gatoName}">
+          <div class="gato-name">${gatoName}</div>
+          <div class="gato-info">Última foto: ${images[0].name}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
