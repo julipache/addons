@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "10.8",
+	"version": "10.9",
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
