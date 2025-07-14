@@ -145,10 +145,12 @@ def lista_imagenes(gato):
     carpeta = os.path.join(CLASIFICADO_DIR, gato)
     if not os.path.exists(carpeta):
         return jsonify([])
-    imagenes = sorted(
-        [f for f in os.listdir(carpeta) if f.lower().endswith(('.jpg', '.png', '.jpeg'))],
-        reverse=True
-    )
+    imagenes = [
+        f for f in os.listdir(carpeta)
+        if f.lower().endswith(('.jpg', '.png', '.jpeg'))
+        and (gato == "sdg" or "sdg_julieta" not in f)  # ❌ Filtrar sdg_julieta
+    ]
+    imagenes.sort(reverse=True)
     return jsonify(imagenes)
 
 @app.route("/media/<gato>/<filename>")
