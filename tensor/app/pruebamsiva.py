@@ -18,9 +18,13 @@ output_directory = '/media/frigate/clasificado'
 doubtful_directory = os.path.join(output_directory, 'dudosos')
 log_file_path = '/media/frigate/predicciones_log.csv'
 
+# Directorio accesible para los JSON
+public_json_directory = '/config/www/clasificado'
+
 # Crear directorios si no existen
 os.makedirs(output_directory, exist_ok=True)
 os.makedirs(doubtful_directory, exist_ok=True)
+os.makedirs(public_json_directory, exist_ok=True)
 
 # Cargar el modelo entrenado
 model_path = '/media/mi_modelo_entrenado.keras'
@@ -59,31 +63,23 @@ def predict_and_classify_image(img_path, log_writer):
     # Escribir la predicción en el log
     log_writer.writerow([os.path.basename(img_path), predicted_class_name, confidence])
 
-# Función para actualizar el index.json en cada carpeta de gato
-def actualizar_index_json():
-    logging.info("Actualizando index.json en carpetas de gatos...")
+# Función para actualizar el index.json en /www
+def actualizar_public_json():
+    logging.info("Actualizando index.json en /config/www/clasificado...")
     for class_name in class_labels.values():
-        class_folder = os.path.join(output_directory, class_name)
-        if os.path.exists(class_folder):
+        source_folder = os.path.join(output_directory, class_name)
+        if os.path.exists(source_folder):
             archivos = sorted(
-                [f for f in os.listdir(class_folder) if f.lower().endswith(('.jpg', '.jpeg', '.png'))],
+                [f for f in os.listdir(source_folder) if f.lower().endswith(('.jpg', '.jpeg', '.png'))],
                 reverse=True
             )
-            index_file = os.path.join(class_folder, "index.json")
+            target_folder = os.path.join(public_json_directory, class_name)
+            os.makedirs(target_folder, exist_ok=True)
+
+            index_file = os.path.join(target_folder, "index.json")
             with open(index_file, "w") as f:
                 json.dump(archivos, f, indent=2)
-            logging.info(f"index.json actualizado en {class_folder}")
-
-    # También generar index.json para "dudosos"
-    if os.path.exists(doubtful_directory):
-        archivos_dudosos = sorted(
-            [f for f in os.listdir(doubtful_directory) if f.lower().endswith(('.jpg', '.jpeg', '.png'))],
-            reverse=True
-        )
-        index_file_dudosos = os.path.join(doubtful_directory, "index.json")
-        with open(index_file_dudosos, "w") as f:
-            json.dump(archivos_dudosos, f, indent=2)
-        logging.info(f"index.json actualizado en {doubtful_directory}")
+            logging.info(f"index.json generado en {target_folder}")
 
 # Abrir el archivo CSV para guardar el log de predicciones
 with open(log_file_path, mode='w', newline='') as log_file:
@@ -97,7 +93,7 @@ with open(log_file_path, mode='w', newline='') as log_file:
                 img_path = os.path.join(root, filename)
                 predict_and_classify_image(img_path, log_writer)
 
-# Actualizar los index.json al final
-actualizar_index_json()
+# Actualizar los JSON públicos
+actualizar_public_json()
 
-logging.info("Image classification and index.json generation completed")
+logging.info("Image classification and public index.json generation completed")
