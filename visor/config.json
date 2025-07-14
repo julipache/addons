@@ -1,6 +1,6 @@
 {
 	"name": "visor",
-	"version": "10.0",
+	"version": "10.1",
 	"slug": "visor",
 	"description": "A Home Assistant add-on that analyzes show cams .",
 	"uart": true,
@@ -22,6 +22,7 @@
 	"timeout": 30,
 	"panel_icon": "mdi:zigbee",
 	"ingress_port": 8099,
+	"panel_icon": "mdi:cat",
   "ports": {
     "8099/tcp": 8099,
     "8081/tcp": 8081,

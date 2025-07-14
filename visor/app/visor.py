@@ -1,100 +1,91 @@
-from flask import Flask, jsonify, send_from_directory, request, abort, render_template_string
+from flask import Flask, jsonify, send_from_directory, render_template_string, request, abort
 import os
 
 app = Flask(__name__)
 
-# Configuración
+# 📂 Ruta donde están clasificadas las fotos de gatos
 MEDIA_DIR = "/media/frigate/clasificado"
-AUTH_TOKEN = "mipasswordsegura"  # Cambia por algo fuerte
 
-# HTML simple
+# 🛡️ Token opcional (lo dejamos vacío porque Home Assistant ya controla acceso con ingress)
+AUTH_TOKEN = ""  # Si quieres añadir uno extra, pon algo como "mipasswordsegura"
+
+# 🌐 HTML para la galería
 html_template = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Panel de gatos 🐾</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 20px; }
-        h1 { text-align: center; }
-        .gato-card {
-            background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 15px; margin: 20px auto; max-width: 800px;
-        }
-        .gato-name { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 10px; }
-        .galeria { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-        .galeria img { height: 150px; border-radius: 8px; flex-shrink: 0; object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
-        .foto-info { font-size: 0.9em; text-align: center; color: #666; margin-top: 4px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Panel de gatos 🐾</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 30px; }
+    .gato-card {
+      background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 15px; margin: 20px auto; max-width: 800px;
+    }
+    .gato-name { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 10px; }
+    .galeria { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
+    .galeria img { height: 150px; border-radius: 8px; flex-shrink: 0; object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .foto-info { font-size: 0.9em; text-align: center; color: #666; margin-top: 4px; }
+  </style>
 </head>
 <body>
-    <h1>Panel de gatos 🐾</h1>
-    <div id="gatos"></div>
-    <script>
-        const token = prompt("Introduce el token de acceso:");
+  <h1>Panel de gatos 🐾</h1>
+  <div id="gatos"></div>
+  <script>
+    fetch('/api/gatos')
+      .then(res => res.json())
+      .then(gatos => {
+        gatos.forEach(gato => {
+          fetch(`/api/gatos/${gato}`)
+            .then(res => res.json())
+            .then(imagenes => {
+              const card = document.createElement('div');
+              card.className = 'gato-card';
 
-        fetch('/api/gatos', {
-            headers: { "Authorization": "Bearer " + token }
-        })
-        .then(res => res.json())
-        .then(gatos => {
-            gatos.forEach(gato => {
-                fetch(`/api/gatos/${gato}`, {
-                    headers: { "Authorization": "Bearer " + token }
-                })
-                .then(res => res.json())
-                .then(imagenes => {
-                    const card = document.createElement('div');
-                    card.className = 'gato-card';
+              const nombre = document.createElement('div');
+              nombre.className = 'gato-name';
+              nombre.textContent = gato.charAt(0).toUpperCase() + gato.slice(1);
 
-                    const nombre = document.createElement('div');
-                    nombre.className = 'gato-name';
-                    nombre.textContent = gato;
+              const galeria = document.createElement('div');
+              galeria.className = 'galeria';
 
-                    const galeria = document.createElement('div');
-                    galeria.className = 'galeria';
+              imagenes.slice(0, 10).forEach(imgName => {
+                const imgUrl = `/media/${gato}/${imgName}`;
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.alt = gato;
 
-                    imagenes.slice(0, 10).forEach(imgName => {
-                        const imgUrl = `/media/${gato}/${imgName}`;
-                        const img = document.createElement('img');
-                        img.src = imgUrl + "?token=" + token;
+                const info = document.createElement('div');
+                info.className = 'foto-info';
+                const accion = imgName.includes('comio') ? '🍽️ Comió' :
+                               imgName.includes('arenero') ? '🪣 Arenero' :
+                               '📸 Detectado';
+                info.textContent = accion;
 
-                        const info = document.createElement('div');
-                        info.className = 'foto-info';
-                        const accion = imgName.includes('comio') ? '🍽️ Comió' :
-                                       imgName.includes('arenero') ? '🪣 Arenero' :
-                                       '📸 Detectado';
-                        info.textContent = accion;
+                const container = document.createElement('div');
+                container.style.textAlign = 'center';
+                container.appendChild(img);
+                container.appendChild(info);
 
-                        const container = document.createElement('div');
-                        container.style.textAlign = 'center';
-                        container.appendChild(img);
-                        container.appendChild(info);
+                galeria.appendChild(container);
+              });
 
-                        galeria.appendChild(container);
-                    });
-
-                    card.appendChild(nombre);
-                    card.appendChild(galeria);
-                    document.getElementById('gatos').appendChild(card);
-                });
+              card.appendChild(nombre);
+              card.appendChild(galeria);
+              document.getElementById('gatos').appendChild(card);
             });
         });
-    </script>
+      });
+  </script>
 </body>
 </html>
 """
 
-# Middleware de autenticación
+# 🔐 (opcional) Middleware de autenticación
 @app.before_request
 def check_auth():
-    if request.path.startswith('/api') or request.path.startswith('/media'):
-        auth_header = request.headers.get('Authorization')
-        query_token = request.args.get('token')
-        if auth_header and auth_header == f"Bearer {AUTH_TOKEN}":
-            return
-        if query_token and query_token == AUTH_TOKEN:
-            return
+    if AUTH_TOKEN and request.headers.get('Authorization') != f"Bearer {AUTH_TOKEN}":
         abort(401)
 
 @app.route("/")
@@ -120,4 +111,5 @@ def serve_image(gato, filename):
     return send_from_directory(carpeta, filename)
 
 if __name__ == "__main__":
+    # ⚡ Escuchar en todas las interfaces, necesario para ingress
     app.run(host="0.0.0.0", port=8099)
