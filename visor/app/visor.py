@@ -26,7 +26,7 @@ def index():
     <html lang="es">
     <head>
       <meta charset="UTF-8">
-      <title>Panel de gatos 🐾</title>
+      <title>Panel de gatossssssssssssss 🐾</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body {
@@ -119,7 +119,7 @@ def index():
       </style>
     </head>
     <body>
-      <h1>Panel de gatos 🐾</h1>
+      <h1>Panel de gatossssssssssssss 🐾</h1>
       <div class="container" id="gatos"></div>
 
       <div id="popup" class="popup" onclick="closePopup()">
