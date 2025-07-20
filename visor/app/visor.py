@@ -174,7 +174,7 @@ def index():
               img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].file}`);
+              img.onclick = () => openPopup(`${basePath}/media/${gato}/${data.ultimas[tipo].file}`); // ✅ Arreglado
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
               hora.textContent = data.ultimas[tipo].hora;
@@ -244,11 +244,15 @@ def lista_imagenes(gato):
     }
 
     for f in files:
-        hora_str = f.split("_")[0]
-        try:
-            hora = datetime.strptime(hora_str, "%Y%m%d%H%M%S").strftime("%d/%m %H:%M")
-        except:
-            hora = "?"
+        hora = "?"
+        parts = f.split("-")
+        if len(parts) > 1:
+            try:
+                ts = float(parts[1])  # Extraer timestamp UNIX
+                dt = datetime.fromtimestamp(ts)
+                hora = dt.strftime("%d/%m %H:%M")
+            except:
+                pass
 
         if not ultimas["comio_sala"] and "comedero_sala" in f:
             ultimas["comio_sala"] = {"file": f, "hora": hora}
