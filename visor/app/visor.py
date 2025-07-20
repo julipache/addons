@@ -174,7 +174,7 @@ def index():
               img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/media/${gato}/${data.ultimas[tipo].file}`); // ✅ Arreglado
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
               hora.textContent = data.ultimas[tipo].hora;
@@ -254,14 +254,16 @@ def lista_imagenes(gato):
             except:
                 pass
 
+        original_file = f.replace("-clean_crop", "").replace("-crop", "")  # Quitar sufijos del recorte
+
         if not ultimas["comio_sala"] and "comedero_sala" in f:
-            ultimas["comio_sala"] = {"file": f, "hora": hora}
+            ultimas["comio_sala"] = {"file": f, "original": original_file, "hora": hora}
         elif not ultimas["comio_altillo"] and "altillo" in f:
-            ultimas["comio_altillo"] = {"file": f, "hora": hora}
+            ultimas["comio_altillo"] = {"file": f, "original": original_file, "hora": hora}
         elif not ultimas["arenero"] and "arenero" in f:
-            ultimas["arenero"] = {"file": f, "hora": hora}
+            ultimas["arenero"] = {"file": f, "original": original_file, "hora": hora}
         elif not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "hora": hora}
+            ultimas["detectado"] = {"file": f, "original": original_file, "hora": hora}
 
         if all(ultimas.values()):
             break
