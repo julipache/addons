@@ -8,6 +8,7 @@ app = Flask(__name__)
 CLASIFICADO_DIR = "/media/frigate/clasificado"
 ORIGINALES_DIR = "/media/frigate/originales"
 
+
 # 🔄 Ajustar rutas para Home Assistant ingress
 @app.before_request
 def adjust_ingress_path():
@@ -21,7 +22,6 @@ def index():
     if not os.path.exists(CLASIFICADO_DIR):
         return "<h2>Error: No se encuentra la carpeta de imágenes 🐾</h2>", 500
 
-    # 🖤 Modo oscuro + filtros + contadores
     return render_template_string("""
     <!DOCTYPE html>
     <html lang="es">
@@ -51,25 +51,27 @@ def index():
           margin: 10px 0;
           padding: 15px;
         }
+        .gato-header {
+          display: flex; justify-content: space-between; align-items: center;
+          cursor: pointer; user-select: none;
+        }
         .gato-name {
-          font-size: 1.6em;
+          font-size: 1.4em;
           font-weight: bold;
-          text-align: center;
-          margin-bottom: 10px;
         }
         .gato-stats {
-          text-align: center;
-          font-size: 0.95em;
-          margin-bottom: 10px;
+          font-size: 0.9em;
+          color: #666;
         }
         .galeria {
-          display: flex;
+          display: none;
           flex-wrap: wrap;
           gap: 8px;
           justify-content: center;
+          margin-top: 10px;
         }
         .galeria img {
-          height: 120px;
+          height: 100px;
           border-radius: 8px;
           object-fit: cover;
           box-shadow: 0 1px 4px rgba(0,0,0,0.2);
@@ -79,24 +81,20 @@ def index():
         .galeria img:hover {
           transform: scale(1.05);
         }
-        .foto-info {
+        .ver-mas {
           text-align: center;
-          font-size: 0.85em;
-          color: #777;
+          margin: 10px 0;
         }
-        .empty-msg {
-          text-align: center;
-          color: #999;
-          margin-top: 30px;
-          font-size: 1.2em;
+        .ver-mas button {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 6px;
+          background: #007bff;
+          color: #fff;
+          cursor: pointer;
         }
-        #filter-container {
-          text-align: center;
-          margin: 10px;
-        }
-        select {
-          padding: 5px 10px;
-          border-radius: 8px;
+        .ver-mas button:hover {
+          background: #0056b3;
         }
         .popup {
           display: none;
@@ -115,16 +113,6 @@ def index():
     </head>
     <body>
       <h1>Panel de gatos 🐾</h1>
-
-      <div id="filter-container">
-        <label for="dateFilter">📅 Filtrar por:</label>
-        <select id="dateFilter" onchange="loadGatos()">
-          <option value="all">Todas</option>
-          <option value="today">Hoy</option>
-          <option value="24h">Últimas 24h</option>
-        </select>
-      </div>
-
       <div class="container" id="gatos"></div>
 
       <div id="popup" class="popup" onclick="closePopup()">
@@ -133,8 +121,8 @@ def index():
 
       <script>
         const basePath = window.location.pathname.replace(/\\/$/, '');
+
         async function loadGatos() {
-          const filter = document.getElementById('dateFilter').value;
           const res = await fetch(`${basePath}/api/gatos`);
           const gatos = await res.json();
           const container = document.getElementById('gatos');
@@ -146,11 +134,15 @@ def index():
           }
 
           gatos.forEach(async (gato) => {
-            const res = await fetch(`${basePath}/api/gatos/${gato}?filter=${filter}`);
+            const res = await fetch(`${basePath}/api/gatos/${gato}?page=1&per_page=10`);
             const data = await res.json();
 
             const card = document.createElement('div');
             card.className = 'gato-card';
+
+            const header = document.createElement('div');
+            header.className = 'gato-header';
+            header.onclick = () => toggleGaleria(gato);
 
             const nombre = document.createElement('div');
             nombre.className = 'gato-name';
@@ -159,10 +151,15 @@ def index():
             const stats = document.createElement('div');
             stats.className = 'gato-stats';
             stats.innerHTML = `🍽️ ${data.stats.comio} 🪣 ${data.stats.arenero} 📸 ${data.stats.detectado}<br>
-                               🕒 Última actividad: ${data.stats.ultima_foto}`;
+                               🕒 Última: ${data.stats.ultima_foto}`;
+
+            header.appendChild(nombre);
+            header.appendChild(stats);
 
             const galeria = document.createElement('div');
             galeria.className = 'galeria';
+            galeria.id = `galeria-${gato}`;
+            galeria.dataset.page = 1;
 
             data.imagenes.forEach(imgName => {
               const imgUrl = `${basePath}/media/${gato}/${imgName}`;
@@ -170,15 +167,51 @@ def index():
               const img = document.createElement('img');
               img.src = imgUrl;
               img.alt = gato;
+              img.loading = "lazy";
               img.onclick = () => openPopup(originalUrl);
               galeria.appendChild(img);
             });
 
-            card.appendChild(nombre);
-            card.appendChild(stats);
+            const verMas = document.createElement('div');
+            verMas.className = 'ver-mas';
+            verMas.innerHTML = `<button onclick="loadMore('${gato}')">Ver más</button>`;
+
+            galeria.appendChild(verMas);
+
+            card.appendChild(header);
             card.appendChild(galeria);
             container.appendChild(card);
           });
+        }
+
+        function toggleGaleria(gato) {
+          const galeria = document.getElementById(`galeria-${gato}`);
+          galeria.style.display = galeria.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        async function loadMore(gato) {
+          const galeria = document.getElementById(`galeria-${gato}`);
+          let page = parseInt(galeria.dataset.page) + 1;
+          const res = await fetch(`${basePath}/api/gatos/${gato}?page=${page}&per_page=10`);
+          const data = await res.json();
+
+          if (!data.imagenes.length) {
+            galeria.querySelector('.ver-mas').innerHTML = "<i>No hay más fotos</i>";
+            return;
+          }
+
+          data.imagenes.forEach(imgName => {
+            const imgUrl = `${basePath}/media/${gato}/${imgName}`;
+            const originalUrl = `${basePath}/originales/${imgName}`;
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.alt = gato;
+            img.loading = "lazy";
+            img.onclick = () => openPopup(originalUrl);
+            galeria.insertBefore(img, galeria.querySelector('.ver-mas'));
+          });
+
+          galeria.dataset.page = page;
         }
 
         function openPopup(url) {
@@ -190,7 +223,6 @@ def index():
         }
 
         loadGatos();
-        setInterval(loadGatos, 300000); // 🔄 Auto-refresh cada 5 min
       </script>
     </body>
     </html>
@@ -211,7 +243,9 @@ def lista_imagenes(gato):
     if not os.path.exists(carpeta):
         return jsonify({"imagenes": [], "stats": {}})
 
-    filter_mode = request.args.get("filter", "all")
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 10))
+
     imagenes = [
         f for f in os.listdir(carpeta)
         if f.lower().endswith(('.jpg', '.png', '.jpeg'))
@@ -226,24 +260,13 @@ def lista_imagenes(gato):
     ultima_foto = imagenes[0] if imagenes else "N/A"
     ultima_foto_time = ultima_foto.split("_")[0] if "_" in ultima_foto else "N/A"
 
-    # 🗓️ Filtrar por fecha
-    if filter_mode != "all":
-        now = datetime.now()
-        filtered = []
-        for img in imagenes:
-            try:
-                ts_str = img.split("_")[0]
-                ts = datetime.strptime(ts_str, "%Y%m%d%H%M%S")
-                if filter_mode == "today" and ts.date() == now.date():
-                    filtered.append(img)
-                elif filter_mode == "24h" and (now - ts).total_seconds() <= 86400:
-                    filtered.append(img)
-            except:
-                continue
-        imagenes = filtered
+    # 📦 Paginación
+    start = (page - 1) * per_page
+    end = start + per_page
+    imagenes_pag = imagenes[start:end]
 
     return jsonify({
-        "imagenes": imagenes,
+        "imagenes": imagenes_pag,
         "stats": {
             "comio": comio,
             "arenero": arenero,
