@@ -60,23 +60,33 @@ def index():
         }
         .ultimas-fotos {
           display: flex;
+          flex-wrap: wrap;
           justify-content: space-around;
           margin-top: 10px;
         }
-        .ultimas-fotos div {
+        .foto-bloque {
           text-align: center;
+          margin: 5px;
         }
-        .ultimas-fotos img {
-          width: 80px;
-          height: 80px;
+        .foto-bloque img {
+          width: 90px;
+          height: 90px;
           object-fit: cover;
           border-radius: 8px;
           box-shadow: 0 1px 4px rgba(0,0,0,0.2);
           cursor: pointer;
           transition: transform 0.2s ease;
         }
-        .ultimas-fotos img:hover {
+        .foto-bloque img:hover {
           transform: scale(1.1);
+        }
+        .foto-tipo {
+          font-size: 1em;
+          margin: 4px 0;
+        }
+        .foto-hora {
+          font-size: 0.85em;
+          color: #666;
         }
         .ver-mas {
           text-align: center;
@@ -146,19 +156,32 @@ def index():
             const ultimas = document.createElement('div');
             ultimas.className = 'ultimas-fotos';
 
-            const tipos = { comio: "🍽️", arenero: "🪣", detectado: "📸" };
+            const tipos = {
+              comio_sala: "🍽️ Sala",
+              comio_altillo: "🍽️ Altillo",
+              arenero: "🪣 Arenero",
+              detectado: "📸 Detectado"
+            };
+
             for (const tipo in tipos) {
-              const div = document.createElement('div');
-              const icon = document.createElement('div');
-              icon.textContent = tipos[tipo];
+              if (!data.ultimas[tipo]) continue;
+              const bloque = document.createElement('div');
+              bloque.className = 'foto-bloque';
+              const label = document.createElement('div');
+              label.className = 'foto-tipo';
+              label.textContent = tipos[tipo];
               const img = document.createElement('img');
-              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo]}`;
+              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo]}`);
-              div.appendChild(icon);
-              div.appendChild(img);
-              ultimas.appendChild(div);
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].file}`);
+              const hora = document.createElement('div');
+              hora.className = 'foto-hora';
+              hora.textContent = data.ultimas[tipo].hora;
+              bloque.appendChild(label);
+              bloque.appendChild(img);
+              bloque.appendChild(hora);
+              ultimas.appendChild(bloque);
             }
 
             const verMas = document.createElement('div');
@@ -213,14 +236,29 @@ def lista_imagenes(gato):
     ]
     files.sort(reverse=True)
 
-    ultimas = {"comio": None, "arenero": None, "detectado": None}
+    ultimas = {
+        "comio_sala": None,
+        "comio_altillo": None,
+        "arenero": None,
+        "detectado": None
+    }
+
     for f in files:
-        if not ultimas["comio"] and "comio" in f:
-            ultimas["comio"] = f
+        hora_str = f.split("_")[0]
+        try:
+            hora = datetime.strptime(hora_str, "%Y%m%d%H%M%S").strftime("%d/%m %H:%M")
+        except:
+            hora = "?"
+
+        if not ultimas["comio_sala"] and "comedero_sala" in f:
+            ultimas["comio_sala"] = {"file": f, "hora": hora}
+        elif not ultimas["comio_altillo"] and "altillo" in f:
+            ultimas["comio_altillo"] = {"file": f, "hora": hora}
         elif not ultimas["arenero"] and "arenero" in f:
-            ultimas["arenero"] = f
+            ultimas["arenero"] = {"file": f, "hora": hora}
         elif not ultimas["detectado"]:
-            ultimas["detectado"] = f
+            ultimas["detectado"] = {"file": f, "hora": hora}
+
         if all(ultimas.values()):
             break
 
