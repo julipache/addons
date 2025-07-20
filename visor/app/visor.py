@@ -8,7 +8,6 @@ app = Flask(__name__)
 CLASIFICADO_DIR = "/media/frigate/clasificado"
 ORIGINALES_DIR = "/media/frigate/originales"
 
-
 # 🔄 Ajustar rutas para Home Assistant ingress
 @app.before_request
 def adjust_ingress_path():
@@ -52,38 +51,36 @@ def index():
           padding: 15px;
         }
         .gato-header {
-          display: flex; justify-content: space-between; align-items: center;
-          cursor: pointer; user-select: none;
+          text-align: center;
+          margin-bottom: 10px;
         }
         .gato-name {
           font-size: 1.4em;
           font-weight: bold;
         }
-        .gato-stats {
-          font-size: 0.9em;
-          color: #666;
-        }
-        .galeria {
-          display: none;
-          flex-wrap: wrap;
-          gap: 8px;
-          justify-content: center;
+        .ultimas-fotos {
+          display: flex;
+          justify-content: space-around;
           margin-top: 10px;
         }
-        .galeria img {
-          height: 100px;
-          border-radius: 8px;
+        .ultimas-fotos div {
+          text-align: center;
+        }
+        .ultimas-fotos img {
+          width: 80px;
+          height: 80px;
           object-fit: cover;
+          border-radius: 8px;
           box-shadow: 0 1px 4px rgba(0,0,0,0.2);
           cursor: pointer;
           transition: transform 0.2s ease;
         }
-        .galeria img:hover {
-          transform: scale(1.05);
+        .ultimas-fotos img:hover {
+          transform: scale(1.1);
         }
         .ver-mas {
           text-align: center;
-          margin: 10px 0;
+          margin-top: 10px;
         }
         .ver-mas button {
           padding: 6px 12px;
@@ -134,7 +131,7 @@ def index():
           }
 
           gatos.forEach(async (gato) => {
-            const res = await fetch(`${basePath}/api/gatos/${gato}?page=1&per_page=10`);
+            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
             const data = await res.json();
 
             const card = document.createElement('div');
@@ -142,76 +139,39 @@ def index():
 
             const header = document.createElement('div');
             header.className = 'gato-header';
-            header.onclick = () => toggleGaleria(gato);
-
             const nombre = document.createElement('div');
             nombre.className = 'gato-name';
             nombre.textContent = gato.charAt(0).toUpperCase() + gato.slice(1);
 
-            const stats = document.createElement('div');
-            stats.className = 'gato-stats';
-            stats.innerHTML = `🍽️ ${data.stats.comio} 🪣 ${data.stats.arenero} 📸 ${data.stats.detectado}<br>
-                               🕒 Última: ${data.stats.ultima_foto}`;
+            const ultimas = document.createElement('div');
+            ultimas.className = 'ultimas-fotos';
 
-            header.appendChild(nombre);
-            header.appendChild(stats);
-
-            const galeria = document.createElement('div');
-            galeria.className = 'galeria';
-            galeria.id = `galeria-${gato}`;
-            galeria.dataset.page = 1;
-
-            data.imagenes.forEach(imgName => {
-              const imgUrl = `${basePath}/media/${gato}/${imgName}`;
-              const originalUrl = `${basePath}/originales/${imgName}`;
+            const tipos = { comio: "🍽️", arenero: "🪣", detectado: "📸" };
+            for (const tipo in tipos) {
+              const div = document.createElement('div');
+              const icon = document.createElement('div');
+              icon.textContent = tipos[tipo];
               const img = document.createElement('img');
-              img.src = imgUrl;
-              img.alt = gato;
+              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo]}`;
+              img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(originalUrl);
-              galeria.appendChild(img);
-            });
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo]}`);
+              div.appendChild(icon);
+              div.appendChild(img);
+              ultimas.appendChild(div);
+            }
 
             const verMas = document.createElement('div');
             verMas.className = 'ver-mas';
-            verMas.innerHTML = `<button onclick="loadMore('${gato}')">Ver más</button>`;
+            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
 
-            galeria.appendChild(verMas);
-
+            header.appendChild(nombre);
             card.appendChild(header);
-            card.appendChild(galeria);
+            card.appendChild(ultimas);
+            card.appendChild(verMas);
+
             container.appendChild(card);
           });
-        }
-
-        function toggleGaleria(gato) {
-          const galeria = document.getElementById(`galeria-${gato}`);
-          galeria.style.display = galeria.style.display === 'flex' ? 'none' : 'flex';
-        }
-
-        async function loadMore(gato) {
-          const galeria = document.getElementById(`galeria-${gato}`);
-          let page = parseInt(galeria.dataset.page) + 1;
-          const res = await fetch(`${basePath}/api/gatos/${gato}?page=${page}&per_page=10`);
-          const data = await res.json();
-
-          if (!data.imagenes.length) {
-            galeria.querySelector('.ver-mas').innerHTML = "<i>No hay más fotos</i>";
-            return;
-          }
-
-          data.imagenes.forEach(imgName => {
-            const imgUrl = `${basePath}/media/${gato}/${imgName}`;
-            const originalUrl = `${basePath}/originales/${imgName}`;
-            const img = document.createElement('img');
-            img.src = imgUrl;
-            img.alt = gato;
-            img.loading = "lazy";
-            img.onclick = () => openPopup(originalUrl);
-            galeria.insertBefore(img, galeria.querySelector('.ver-mas'));
-          });
-
-          galeria.dataset.page = page;
         }
 
         function openPopup(url) {
@@ -220,6 +180,9 @@ def index():
         }
         function closePopup() {
           document.getElementById('popup').style.display = 'none';
+        }
+        function openGallery(gato) {
+          window.location.href = `${basePath}/galeria/${gato}`;
         }
 
         loadGatos();
@@ -241,38 +204,32 @@ def lista_gatos():
 def lista_imagenes(gato):
     carpeta = os.path.join(CLASIFICADO_DIR, gato)
     if not os.path.exists(carpeta):
-        return jsonify({"imagenes": [], "stats": {}})
+        return jsonify({"imagenes": [], "ultimas": {}})
 
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("per_page", 10))
-
-    imagenes = [
+    files = [
         f for f in os.listdir(carpeta)
         if f.lower().endswith(('.jpg', '.png', '.jpeg'))
-        and (gato == "sdg" or "sdg_julieta" not in f)  # ❌ Filtrar sdg_julieta
+        and (gato == "sdg" or "sdg_julieta" not in f)
     ]
-    imagenes.sort(reverse=True)
+    files.sort(reverse=True)
 
-    # 📊 Contadores
-    comio = sum(1 for f in imagenes if "comio" in f.lower())
-    arenero = sum(1 for f in imagenes if "arenero" in f.lower())
-    detectado = len(imagenes)
-    ultima_foto = imagenes[0] if imagenes else "N/A"
-    ultima_foto_time = ultima_foto.split("_")[0] if "_" in ultima_foto else "N/A"
+    ultimas = {"comio": None, "arenero": None, "detectado": None}
+    for f in files:
+        if not ultimas["comio"] and "comio" in f:
+            ultimas["comio"] = f
+        elif not ultimas["arenero"] and "arenero" in f:
+            ultimas["arenero"] = f
+        elif not ultimas["detectado"]:
+            ultimas["detectado"] = f
+        if all(ultimas.values()):
+            break
 
-    # 📦 Paginación
-    start = (page - 1) * per_page
-    end = start + per_page
-    imagenes_pag = imagenes[start:end]
+    if request.args.get("summary") == "true":
+        return jsonify({"ultimas": ultimas})
 
     return jsonify({
-        "imagenes": imagenes_pag,
-        "stats": {
-            "comio": comio,
-            "arenero": arenero,
-            "detectado": detectado,
-            "ultima_foto": ultima_foto_time
-        }
+        "imagenes": files,
+        "ultimas": ultimas
     })
 
 
