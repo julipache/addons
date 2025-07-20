@@ -16,6 +16,16 @@ def adjust_ingress_path():
         app.url_map.script_name = ingress_path
 
 
+def buscar_original(base_name):
+    """
+    Buscar en la carpeta de originales un archivo que empiece con base_name
+    """
+    for f in os.listdir(ORIGINALES_DIR):
+        if f.startswith(base_name):
+            return f
+    return None
+
+
 @app.route("/")
 def index():
     if not os.path.exists(CLASIFICADO_DIR):
@@ -116,6 +126,21 @@ def index():
           max-width: 90%; max-height: 90%;
           border-radius: 12px;
         }
+        .mini-galeria {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .mini-galeria img {
+          width: 80px;
+          height: 80px;
+          border-radius: 8px;
+          object-fit: cover;
+          cursor: pointer;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
       </style>
     </head>
     <body>
@@ -124,6 +149,10 @@ def index():
 
       <div id="popup" class="popup" onclick="closePopup()">
         <img id="popupImg" src="">
+      </div>
+
+      <div id="miniPopup" class="popup" onclick="closeMiniPopup()">
+        <div id="miniGaleria" class="mini-galeria"></div>
       </div>
 
       <script>
@@ -174,25 +203,30 @@ def index():
               img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`);
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
               hora.textContent = data.ultimas[tipo].hora;
               bloque.appendChild(label);
               bloque.appendChild(img);
               bloque.appendChild(hora);
+
+              if (tipo.includes("comio") || tipo == "arenero") {
+                const btn = document.createElement('button');
+                btn.textContent = "Ver últimas 10";
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  openMiniGaleria(gato, tipo);
+                };
+                bloque.appendChild(btn);
+              }
+
               ultimas.appendChild(bloque);
             }
-
-            const verMas = document.createElement('div');
-            verMas.className = 'ver-mas';
-            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
 
             header.appendChild(nombre);
             card.appendChild(header);
             card.appendChild(ultimas);
-            card.appendChild(verMas);
-
             container.appendChild(card);
           });
         }
@@ -204,8 +238,23 @@ def index():
         function closePopup() {
           document.getElementById('popup').style.display = 'none';
         }
-        function openGallery(gato) {
-          window.location.href = `${basePath}/galeria/${gato}`;
+        function openMiniGaleria(gato, tipo) {
+          fetch(`${basePath}/api/gatos/${gato}/ultimos?tipo=${tipo}&count=10`)
+            .then(res => res.json())
+            .then(data => {
+              const miniGaleria = document.getElementById('miniGaleria');
+              miniGaleria.innerHTML = '';
+              data.forEach(imgName => {
+                const img = document.createElement('img');
+                img.src = `${basePath}/media/${gato}/${imgName}`;
+                img.onclick = () => openPopup(`${basePath}/originales/${imgName}`);
+                miniGaleria.appendChild(img);
+              });
+              document.getElementById('miniPopup').style.display = 'flex';
+            });
+        }
+        function closeMiniPopup() {
+          document.getElementById('miniPopup').style.display = 'none';
         }
 
         loadGatos();
@@ -229,13 +278,7 @@ def lista_imagenes(gato):
     if not os.path.exists(carpeta):
         return jsonify({"imagenes": [], "ultimas": {}})
 
-    files = [
-        f for f in os.listdir(carpeta)
-        if f.lower().endswith(('.jpg', '.png', '.jpeg'))
-        and (gato == "sdg" or "sdg_julieta" not in f)
-    ]
-    files.sort(reverse=True)
-
+    files = sorted(os.listdir(carpeta), reverse=True)
     ultimas = {
         "comio_sala": None,
         "comio_altillo": None,
@@ -248,22 +291,23 @@ def lista_imagenes(gato):
         parts = f.split("-")
         if len(parts) > 1:
             try:
-                ts = float(parts[1])  # Extraer timestamp UNIX
+                ts = float(parts[1])
                 dt = datetime.fromtimestamp(ts)
                 hora = dt.strftime("%d/%m %H:%M")
             except:
                 pass
 
-        original_file = f.replace("-clean_crop", "").replace("-crop", "")  # Quitar sufijos del recorte
+        base_name = "-".join(parts[:3])  # Hasta wpmple
+        original = buscar_original(base_name) or f  # Buscar original
 
         if not ultimas["comio_sala"] and "comedero_sala" in f:
-            ultimas["comio_sala"] = {"file": f, "original": original_file, "hora": hora}
+            ultimas["comio_sala"] = {"file": f, "original": original, "hora": hora}
         elif not ultimas["comio_altillo"] and "altillo" in f:
-            ultimas["comio_altillo"] = {"file": f, "original": original_file, "hora": hora}
+            ultimas["comio_altillo"] = {"file": f, "original": original, "hora": hora}
         elif not ultimas["arenero"] and "arenero" in f:
-            ultimas["arenero"] = {"file": f, "original": original_file, "hora": hora}
+            ultimas["arenero"] = {"file": f, "original": original, "hora": hora}
         elif not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "original": original_file, "hora": hora}
+            ultimas["detectado"] = {"file": f, "original": original, "hora": hora}
 
         if all(ultimas.values()):
             break
@@ -275,6 +319,22 @@ def lista_imagenes(gato):
         "imagenes": files,
         "ultimas": ultimas
     })
+
+
+@app.route("/api/gatos/<gato>/ultimos")
+def ultimos_eventos(gato):
+    tipo = request.args.get("tipo", "")
+    count = int(request.args.get("count", 10))
+    carpeta = os.path.join(CLASIFICADO_DIR, gato)
+    if not os.path.exists(carpeta):
+        return jsonify([])
+
+    files = sorted([
+        f for f in os.listdir(carpeta)
+        if tipo in f and f.lower().endswith(('.jpg', '.png', '.jpeg'))
+    ], reverse=True)
+
+    return jsonify(files[:count])
 
 
 @app.route("/media/<gato>/<filename>")
