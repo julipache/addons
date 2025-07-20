@@ -26,7 +26,7 @@ def index():
     <html lang="es">
     <head>
       <meta charset="UTF-8">
-      <title>Panel de gatossssssssssssss 🐾</title>
+      <title>Panel de gatos 🐾</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body {
@@ -119,7 +119,7 @@ def index():
       </style>
     </head>
     <body>
-      <h1>Panel de gatossssssssssssss 🐾</h1>
+      <h1>Panel de gatos 🐾</h1>
       <div class="container" id="gatos"></div>
 
       <div id="popup" class="popup" onclick="closePopup()">
@@ -130,7 +130,7 @@ def index():
         const basePath = window.location.pathname.replace(/\\/$/, '');
 
         async function loadGatos() {
-          const res = await fetch(${basePath}/api/gatos);
+          const res = await fetch(`${basePath}/api/gatos`);
           const gatos = await res.json();
           const container = document.getElementById('gatos');
           container.innerHTML = '';
@@ -141,7 +141,7 @@ def index():
           }
 
           gatos.forEach(async (gato) => {
-            const res = await fetch(${basePath}/api/gatos/${gato}?summary=true);
+            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
             const data = await res.json();
 
             const card = document.createElement('div');
@@ -171,10 +171,10 @@ def index():
               label.className = 'foto-tipo';
               label.textContent = tipos[tipo];
               const img = document.createElement('img');
-              img.src = ${basePath}/media/${gato}/${data.ultimas[tipo].file};
+              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(${basePath}/originales/${data.ultimas[tipo].original}); // ✅ Carga original
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
               hora.textContent = data.ultimas[tipo].hora;
@@ -186,7 +186,7 @@ def index():
 
             const verMas = document.createElement('div');
             verMas.className = 'ver-mas';
-            verMas.innerHTML = <button onclick="openGallery('${gato}')">Ver galería ▶</button>;
+            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
 
             header.appendChild(nombre);
             card.appendChild(header);
@@ -205,7 +205,7 @@ def index():
           document.getElementById('popup').style.display = 'none';
         }
         function openGallery(gato) {
-          window.location.href = ${basePath}/galeria/${gato};
+          window.location.href = `${basePath}/galeria/${gato}`;
         }
 
         loadGatos();
