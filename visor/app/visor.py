@@ -1,310 +1,221 @@
-from flask import Flask, jsonify, send_from_directory, render_template_string, abort, request
+@ -1,296 +1,220 @@
+from flask import Flask, render_template_string, request, jsonify, send_file
+import shutil
 import os
-from datetime import datetime
+import json
 
 app = Flask(__name__)
 
-# 📂 Rutas a carpetas
-CLASIFICADO_DIR = "/media/frigate/clasificado"
-ORIGINALES_DIR = "/media/frigate/originales"
+# 📂 Rutas
+BASE_DIR = r"D:\identificaciongatos\solo_clean"
+VALIDADAS_DIR = r"D:\identificaciongatos\validadas"
+DUDOSOS_DIR = r"D:\identificaciongatos\dudosos"
+PROGRESO_FILE = "progreso.json"
 
-# 🔄 Ajustar rutas para Home Assistant ingress
-@app.before_request
-def adjust_ingress_path():
-    ingress_path = request.headers.get("X-Ingress-Path")
-    if ingress_path:
-        app.url_map.script_name = ingress_path
+# 🐱 Lista fija de gatos
+gatos = ["coco", "pina", "snape", "ray", "pollo", "sdg"]
 
+# 📝 Estado del progreso
+if os.path.exists(PROGRESO_FILE):
+    with open(PROGRESO_FILE, "r") as f:
+        progreso = json.load(f)
+        carpeta_actual_idx = progreso.get("carpeta_actual_idx", 0)
+        fotos_marcadas = progreso.get("fotos_marcadas", {})
+else:
+    carpeta_actual_idx = 0
+    fotos_marcadas = {}
 
-def buscar_original(base_name):
-    """
-    Busca en ORIGINALES_DIR un archivo que comience con base_name
-    """
-    try:
-        for f in os.listdir(ORIGINALES_DIR):
-            if f.startswith(base_name):
-                return f
-    except Exception as e:
-        print(f"⚠️ Error buscando original para {base_name}: {e}")
-    return None
+# 📸 Cargar fotos pendientes de la carpeta actual
+def cargar_fotos():
+    carpeta_actual = gatos[carpeta_actual_idx]
+    carpeta_path = os.path.join(BASE_DIR, carpeta_actual)
+    fotos = []
+    for archivo in os.listdir(carpeta_path):
+        path = os.path.join(carpeta_path, archivo)
+        if path not in fotos_marcadas:
+            fotos.append(path)
+    return fotos
 
+fotos_pendientes = cargar_fotos()
 
 @app.route("/")
 def index():
-    if not os.path.exists(CLASIFICADO_DIR):
-        return "<h2>Error: No se encuentra la carpeta de imágenes 🐾</h2>", 500
-
+    carpeta_actual = gatos[carpeta_actual_idx] if carpeta_actual_idx < len(gatos) else "⚠️ Ninguna"
     return render_template_string("""
     <!DOCTYPE html>
     <html lang="es">
     <head>
-      <meta charset="UTF-8">
-      <title>Panel de gatos 🐾</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          background: #f5f5f5;
-          color: #333;
-          margin: 0; padding: 0;
-        }
-        @media (prefers-color-scheme: dark) {
-          body { background: #121212; color: #eee; }
-          .gato-card { background: #1e1e1e; box-shadow: 0 2px 8px rgba(255,255,255,0.1); }
-        }
-        h1 { text-align: center; margin: 20px 0; }
-        .container { display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        .gato-card {
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-          width: 95%;
-          max-width: 800px;
-          margin: 10px 0;
-          padding: 15px;
-        }
-        .gato-header {
-          text-align: center;
-          margin-bottom: 10px;
-        }
-        .gato-name {
-          font-size: 1.4em;
-          font-weight: bold;
-        }
-        .ultimas-fotos {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: space-around;
-          margin-top: 10px;
-        }
-        .foto-bloque {
-          text-align: center;
-          margin: 5px;
-        }
-        .foto-bloque img {
-          width: 90px;
-          height: 90px;
-          object-fit: cover;
-          border-radius: 8px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-          cursor: pointer;
-          transition: transform 0.2s ease;
-        }
-        .foto-bloque img:hover {
-          transform: scale(1.1);
-        }
-        .foto-tipo {
-          font-size: 1em;
-          margin: 4px 0;
-        }
-        .foto-hora {
-          font-size: 0.85em;
-          color: #666;
-        }
-        .ver-mas {
-          text-align: center;
-          margin-top: 10px;
-        }
-        .ver-mas button {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 6px;
-          background: #007bff;
-          color: #fff;
-          cursor: pointer;
-        }
-        .ver-mas button:hover {
-          background: #0056b3;
-        }
-        .popup {
-          display: none;
-          position: fixed;
-          top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.8);
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        .popup img {
-          max-width: 90%; max-height: 90%;
-          border-radius: 12px;
-        }
-      </style>
+        <meta charset="UTF-8">
+        <title>Validador de fotos 🐱</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; background: #f5f5f5; }
+            img { max-width: 80%; max-height: 80vh; border: 5px solid #333; border-radius: 10px; margin: 20px 0; }
+            .gato-btn, .carpeta-btn {
+                display: inline-block;
+                margin: 5px;
+                padding: 10px 15px;
+                font-size: 1.2em;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .gato-btn:hover, .carpeta-btn:hover {
+                background-color: #0056b3;
+            }
+            .dudoso-btn {
+                display: inline-block;
+                margin: 5px;
+                padding: 10px 15px;
+                font-size: 1.2em;
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .dudoso-btn:hover {
+                background-color: #a71d2a;
+            }
+        </style>
     </head>
     <body>
-      <h1>Panel de gatos 🐾</h1>
-      <div class="container" id="gatos"></div>
+        <h1>Validador de fotos 🐱</h1>
+        <h3>📂 Carpeta actual: {{ carpeta_actual }}</h3>
+        <div id="foto-container">
+            <p>Cargando...</p>
+        </div>
+        <div id="gato-buttons">
+            {% for gato in gatos %}
+            <button class="gato-btn" onclick="asignarGato('{{ gato }}')">{{ loop.index }}️⃣ {{ gato }}</button>
+            {% endfor %}
+            <button class="dudoso-btn" onclick="marcarDudoso()">0️⃣ Dudoso</button>
+        </div>
+        <div style="margin-top: 20px;">
+            <button class="carpeta-btn" onclick="siguienteGato()">➡️ Siguiente gato</button>
+        </div>
+        <script>
+            let fotos = [];
+            let actual = 0;
+            let gatos = {{ gatos|tojson }};
 
-      <div id="popup" class="popup" onclick="closePopup()">
-        <img id="popupImg" src="">
-      </div>
-
-      <script>
-        const basePath = window.location.pathname.replace(/\\/$/, '');
-
-        async function loadGatos() {
-          const res = await fetch(`${basePath}/api/gatos`);
-          const gatos = await res.json();
-          const container = document.getElementById('gatos');
-          container.innerHTML = '';
-
-          if (!gatos.length) {
-            container.innerHTML = '<div class="empty-msg">No hay fotos clasificadas aún 🐱</div>';
-            return;
-          }
-
-          gatos.forEach(async (gato) => {
-            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
-            const data = await res.json();
-
-            const card = document.createElement('div');
-            card.className = 'gato-card';
-
-            const header = document.createElement('div');
-            header.className = 'gato-header';
-            const nombre = document.createElement('div');
-            nombre.className = 'gato-name';
-            nombre.textContent = gato.charAt(0).toUpperCase() + gato.slice(1);
-
-            const ultimas = document.createElement('div');
-            ultimas.className = 'ultimas-fotos';
-
-            const tipos = {
-              comio_sala: "🍽️ Sala",
-              comio_altillo: "🍽️ Altillo",
-              arenero: "🪣 Arenero",
-              detectado: "📸 Detectado"
-            };
-
-            for (const tipo in tipos) {
-              if (!data.ultimas[tipo]) continue;
-              const bloque = document.createElement('div');
-              bloque.className = 'foto-bloque';
-              const label = document.createElement('div');
-              label.className = 'foto-tipo';
-              label.textContent = tipos[tipo];
-              const img = document.createElement('img');
-              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
-              img.alt = tipo;
-              img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original robusta
-              const hora = document.createElement('div');
-              hora.className = 'foto-hora';
-              hora.textContent = data.ultimas[tipo].hora;
-              bloque.appendChild(label);
-              bloque.appendChild(img);
-              bloque.appendChild(hora);
-              ultimas.appendChild(bloque);
+            function cargarFotos() {
+                fetch("/fotos").then(res => res.json()).then(data => {
+                    fotos = data;
+                    mostrarSiguiente();
+                });
             }
 
-            const verMas = document.createElement('div');
-            verMas.className = 'ver-mas';
-            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
+            function mostrarSiguiente() {
+                if (actual >= fotos.length) {
+                    document.getElementById("foto-container").innerHTML = "<h2>✅ ¡No hay más fotos en esta carpeta!</h2>";
+                    return;
+                }
+                const foto = fotos[actual];
+                document.getElementById("foto-container").innerHTML = `
+                    <img src="/imagen?path=${encodeURIComponent(foto)}">
+                    <p>${foto}</p>
+                `;
+            }
 
-            header.appendChild(nombre);
-            card.appendChild(header);
-            card.appendChild(ultimas);
-            card.appendChild(verMas);
+            function asignarGato(gato) {
+                const foto = fotos[actual];
+                fetch("/asignar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: foto, gato })
+                }).then(() => {
+                    actual++;
+                    mostrarSiguiente();
+                });
+            }
 
-            container.appendChild(card);
-          });
-        }
+            function marcarDudoso() {
+                const foto = fotos[actual];
+                fetch("/dudoso", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: foto })
+                }).then(() => {
+                    actual++;
+                    mostrarSiguiente();
+                });
+            }
 
-        function openPopup(url) {
-          document.getElementById('popupImg').src = url;
-          document.getElementById('popup').style.display = 'flex';
-        }
-        function closePopup() {
-          document.getElementById('popup').style.display = 'none';
-        }
-        function openGallery(gato) {
-          window.location.href = `${basePath}/galeria/${gato}`;
-        }
+            function siguienteGato() {
+                fetch("/siguiente_gato", { method: "POST" }).then(() => {
+                    location.reload();
+                });
+            }
 
-        loadGatos();
-      </script>
+            document.addEventListener("keydown", function(event) {
+                if (event.key === "0") {
+                    marcarDudoso();
+                } else {
+                    let idx = parseInt(event.key) - 1;
+                    if (!isNaN(idx) && idx >= 0 && idx < gatos.length) {
+                        asignarGato(gatos[idx]);
+                    }
+                }
+            });
+
+            window.onload = cargarFotos;
+        </script>
     </body>
     </html>
-    """)
+    """, gatos=gatos, carpeta_actual=carpeta_actual)
 
+@app.route("/fotos")
+def get_fotos():
+    return jsonify(fotos_pendientes)
 
-@app.route("/api/gatos")
-def lista_gatos():
-    if not os.path.exists(CLASIFICADO_DIR):
-        return jsonify([])
-    gatos = [d for d in os.listdir(CLASIFICADO_DIR) if os.path.isdir(os.path.join(CLASIFICADO_DIR, d))]
-    return jsonify(sorted(gatos))
+@app.route("/imagen")
+def serve_imagen():
+    path = request.args.get("path")
+    if os.path.exists(path):
+        return send_file(path)
+    else:
+        return "Not Found", 404
 
+@app.route("/asignar", methods=["POST"])
+def asignar():
+    data = request.json
+    path = data["path"]
+    gato = data["gato"]
+    destino = os.path.join(VALIDADAS_DIR, gato)
+    os.makedirs(destino, exist_ok=True)
+    shutil.move(path, os.path.join(destino, os.path.basename(path)))
+    fotos_marcadas[path] = gato
+    guardar_progreso()
+    return jsonify({"status": "ok"})
 
-@app.route("/api/gatos/<gato>")
-def lista_imagenes(gato):
-    carpeta = os.path.join(CLASIFICADO_DIR, gato)
-    if not os.path.exists(carpeta):
-        return jsonify({"imagenes": [], "ultimas": {}})
+@app.route("/dudoso", methods=["POST"])
+def dudoso():
+    data = request.json
+    path = data["path"]
+    os.makedirs(DUDOSOS_DIR, exist_ok=True)
+    shutil.move(path, os.path.join(DUDOSOS_DIR, os.path.basename(path)))
+    fotos_marcadas[path] = "dudoso"
+    guardar_progreso()
+    return jsonify({"status": "ok"})
 
-    files = [
-        f for f in os.listdir(carpeta)
-        if f.lower().endswith(('.jpg', '.png', '.jpeg'))
-        and (gato == "sdg" or "sdg_julieta" not in f)
-    ]
-    files.sort(reverse=True)
+@app.route("/siguiente_gato", methods=["POST"])
+def siguiente_gato():
+    global carpeta_actual_idx, fotos_pendientes
+    if carpeta_actual_idx + 1 < len(gatos):
+        carpeta_actual_idx += 1
+        fotos_pendientes[:] = cargar_fotos()
+        print(f"➡️ Cambiado a carpeta: {gatos[carpeta_actual_idx]}")
+    guardar_progreso()
+    return jsonify({"status": "ok"})
 
-    ultimas = {
-        "comio_sala": None,
-        "comio_altillo": None,
-        "arenero": None,
-        "detectado": None
-    }
-
-    for f in files:
-        hora = "?"
-        parts = f.split("-")
-        if len(parts) > 1:
-            try:
-                ts = float(parts[1])  # Extraer timestamp UNIX
-                dt = datetime.fromtimestamp(ts)
-                hora = dt.strftime("%d/%m %H:%M")
-            except:
-                pass
-
-        base_name = "-".join(parts[:3])  # Comedero_sala-TIMESTAMP-HASH
-        original_file = buscar_original(base_name) or f  # Fallback al recorte si no hay original
-
-        if not ultimas["comio_sala"] and "comedero_sala" in f:
-            ultimas["comio_sala"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["comio_altillo"] and "altillo" in f:
-            ultimas["comio_altillo"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["arenero"] and "arenero" in f:
-            ultimas["arenero"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "original": original_file, "hora": hora}
-
-        if all(ultimas.values()):
-            break
-
-    if request.args.get("summary") == "true":
-        return jsonify({"ultimas": ultimas})
-
-    return jsonify({
-        "imagenes": files,
-        "ultimas": ultimas
-    })
-
-
-@app.route("/media/<gato>/<filename>")
-def serve_recorte(gato, filename):
-    carpeta = os.path.join(CLASIFICADO_DIR, gato)
-    if not os.path.exists(carpeta):
-        abort(404)
-    return send_from_directory(carpeta, filename)
-
-
-@app.route("/originales/<filename>")
-def serve_original(filename):
-    if not os.path.exists(ORIGINALES_DIR):
-        abort(404)
-    return send_from_directory(ORIGINALES_DIR, filename)
-
+def guardar_progreso():
+    with open(PROGRESO_FILE, "w") as f:
+        json.dump({
+            "carpeta_actual_idx": carpeta_actual_idx,
+            "fotos_marcadas": fotos_marcadas
+        }, f, indent=2)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8099)
+    app.run(host="0.0.0.0", port=5000, debug=True)
