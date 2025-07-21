@@ -213,7 +213,7 @@ def index():
               img.src = `${basePath}/media/${gato}/${data.ultimas[tipo][0].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openGalleryPopup(data.ultimas[tipo], 0);
+              img.onclick = () => openGalleryPopup(${JSON.stringify(data.ultimas[tipo])}, 0);
 
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
@@ -222,7 +222,6 @@ def index():
               const verMas = document.createElement('div');
               verMas.className = 'ver-mas';
               verMas.innerHTML = `<button onclick='openGalleryPopup(${JSON.stringify(data.ultimas[tipo])}, 0)'>Ver más 🖼️</button>`;
-
 
               bloque.appendChild(label);
               bloque.appendChild(img);
@@ -249,7 +248,7 @@ def index():
 
         function updateGallery() {
           const img = galleryImages[currentIndex];
-          document.getElementById('galleryImg').src = `${basePath}/media/${img.original}`;
+          document.getElementById('galleryImg').src = `${basePath}/media/${img.gato}/${img.file}`;
           document.getElementById('galleryCaption').textContent = img.hora;
         }
 
@@ -317,14 +316,22 @@ def lista_imagenes(gato):
 
         original_file = f
 
+        # ✅ Añadir nombre del gato a cada imagen
+        img_data = {
+            "file": f,
+            "original": original_file,
+            "hora": hora,
+            "gato": gato
+        }
+
         if "comedero_sala" in f:
-            ultimas["comio_sala"].append({"file": f, "original": original_file, "hora": hora})
+            ultimas["comio_sala"].append(img_data)
         elif "altillo" in f:
-            ultimas["comio_altillo"].append({"file": f, "original": original_file, "hora": hora})
+            ultimas["comio_altillo"].append(img_data)
         elif "arenero" in f:
-            ultimas["arenero"].append({"file": f, "original": original_file, "hora": hora})
+            ultimas["arenero"].append(img_data)
         else:
-            ultimas["detectado"].append({"file": f, "original": original_file, "hora": hora})
+            ultimas["detectado"].append(img_data)
 
     # 🔥 Limitar a las últimas 10 imágenes por tipo
     for tipo in ultimas:
