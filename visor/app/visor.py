@@ -15,22 +15,7 @@ def adjust_ingress_path():
     if ingress_path:
         app.url_map.script_name = ingress_path
         
-def buscar_original(base_name):
-    """
-    Busca en ORIGINALES_DIR un archivo que empiece con base_name.
-    """
-    print(f"🔍 Buscando original para base_name: {base_name}")
-    try:
-        archivos = os.listdir(ORIGINALES_DIR)
-        print(f"📂 Archivos en originales: {len(archivos)} encontrados")
-        for f in archivos:
-            if f.startswith(base_name):
-                print(f"✅ Original encontrado: {f}")
-                return f
-        print("❌ No se encontró original, usando recorte")
-    except Exception as e:
-        print(f"⚠️ Error buscando original para {base_name}: {e}")
-    return None
+
 
 
 
@@ -273,10 +258,10 @@ def lista_imagenes(gato):
                 pass
 
         base_name = "-".join(f.split("-")[:3])
-        original_file = buscar_original(base_name)
-        if not original_file:
-            print(f"⚠️ Original no encontrado para {f}, usando recorte")
-            original_file = f
+        #original_file = buscar_original(base_name)
+        #if not original_file:
+        #    print(f"⚠️ Original no encontrado para {f}, usando recorte")
+        original_file = f
 
 
 
