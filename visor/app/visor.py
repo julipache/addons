@@ -107,42 +107,45 @@ def index():
           display: none;
           position: fixed;
           top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.8);
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        .popup img {
-          max-width: 90%; max-height: 90%;
-          border-radius: 12px;
-        }
-        #galleryPopup {
-          display: none;
-          position: fixed;
-          top: 0; left: 0; width: 100%; height: 100%;
           background: rgba(0,0,0,0.9);
           justify-content: center;
           align-items: center;
           z-index: 2000;
-          overflow-y: auto;
+          overflow: hidden;
         }
-        #galleryContent {
-          max-width: 800px;
-          background: #222;
-          padding: 15px;
-          border-radius: 10px;
+        .popup img {
+          max-width: 90%; max-height: 80%;
+          border-radius: 12px;
         }
-        #galleryContent img {
+        .popup .controls {
+          position: absolute;
           width: 100%;
-          max-width: 600px;
-          border-radius: 8px;
-          margin: 10px auto;
-          display: block;
+          top: 50%;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transform: translateY(-50%);
         }
-        #galleryContent .hora {
-          color: #ccc;
+        .popup .btn {
+          background: rgba(0,0,0,0.5);
+          color: #fff;
+          font-size: 2em;
+          border: none;
+          cursor: pointer;
+          padding: 10px;
+          border-radius: 50%;
+          user-select: none;
+        }
+        .popup .btn:hover {
+          background: rgba(0,0,0,0.8);
+        }
+        .popup .caption {
+          position: absolute;
+          bottom: 20px;
+          color: #fff;
+          font-size: 1em;
           text-align: center;
-          margin-bottom: 10px;
+          width: 100%;
         }
       </style>
     </head>
@@ -150,16 +153,19 @@ def index():
       <h1>Panel de gatos 🐾</h1>
       <div class="container" id="gatos"></div>
 
-      <div id="popup" class="popup" onclick="closePopup()">
-        <img id="popupImg" src="">
-      </div>
-
       <div id="galleryPopup" class="popup" onclick="closeGalleryPopup()">
-        <div id="galleryContent" onclick="event.stopPropagation()"></div>
+        <div class="controls">
+          <button class="btn" onclick="prevImage(event)">&#8592;</button>
+          <button class="btn" onclick="nextImage(event)">&#8594;</button>
+        </div>
+        <img id="galleryImg" src="">
+        <div class="caption" id="galleryCaption"></div>
       </div>
 
       <script>
         const basePath = window.location.pathname.replace(/\\/$/, '');
+        let galleryImages = [];
+        let currentIndex = 0;
 
         async function loadGatos() {
           const res = await fetch(`${basePath}/api/gatos`);
@@ -207,7 +213,7 @@ def index():
               img.src = `${basePath}/media/${gato}/${data.ultimas[tipo][0].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo][0].original}`);
+              img.onclick = () => openGalleryPopup(data.ultimas[tipo], 0);
 
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
@@ -215,7 +221,7 @@ def index():
 
               const verMas = document.createElement('div');
               verMas.className = 'ver-mas';
-              verMas.innerHTML = `<button onclick="openGalleryPopup('${gato}', '${tipo}')">Ver más 🖼️</button>`;
+              verMas.innerHTML = `<button onclick="openGalleryPopup(data.ultimas['${tipo}'], 0)">Ver más 🖼️</button>`;
 
               bloque.appendChild(label);
               bloque.appendChild(img);
@@ -232,36 +238,30 @@ def index():
           });
         }
 
-        function openPopup(url) {
-          document.getElementById('popupImg').src = url;
-          document.getElementById('popup').style.display = 'flex';
-        }
-        function closePopup() {
-          document.getElementById('popup').style.display = 'none';
-        }
-
-        async function openGalleryPopup(gato, tipo) {
-          const res = await fetch(`${basePath}/api/gatos/${gato}`);
-          const data = await res.json();
-
-          const images = data.ultimas[tipo];
-          const galleryContent = document.getElementById('galleryContent');
-          galleryContent.innerHTML = '';
-
-          images.forEach(img => {
-            const image = document.createElement('img');
-            image.src = `${basePath}/media/${gato}/${img.file}`;
-            image.onclick = () => openPopup(`${basePath}/originales/${img.original}`);
-
-            const hora = document.createElement('div');
-            hora.className = 'hora';
-            hora.textContent = img.hora;
-
-            galleryContent.appendChild(image);
-            galleryContent.appendChild(hora);
-          });
-
+        function openGalleryPopup(images, index) {
+          event.stopPropagation();
+          galleryImages = images;
+          currentIndex = index;
+          updateGallery();
           document.getElementById('galleryPopup').style.display = 'flex';
+        }
+
+        function updateGallery() {
+          const img = galleryImages[currentIndex];
+          document.getElementById('galleryImg').src = `${basePath}/media/${img.original}`;
+          document.getElementById('galleryCaption').textContent = img.hora;
+        }
+
+        function prevImage(e) {
+          e.stopPropagation();
+          currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
+          updateGallery();
+        }
+
+        function nextImage(e) {
+          e.stopPropagation();
+          currentIndex = (currentIndex + 1) % galleryImages.length;
+          updateGallery();
         }
 
         function closeGalleryPopup() {
@@ -294,7 +294,7 @@ def lista_imagenes(gato):
         if f.lower().endswith(('.jpg', '.png', '.jpeg'))
         and (gato == "sdg" or "sdg_julieta" not in f)
     ]
-    files.sort(reverse=True)
+    files.sort(reverse=True)  # 🔥 Ordenar por nombre descendente
 
     ultimas = {
         "comio_sala": [],
@@ -314,7 +314,6 @@ def lista_imagenes(gato):
             except:
                 pass
 
-        base_name = "-".join(f.split("-")[:3])
         original_file = f
 
         if "comedero_sala" in f:
@@ -326,7 +325,7 @@ def lista_imagenes(gato):
         else:
             ultimas["detectado"].append({"file": f, "original": original_file, "hora": hora})
 
-    # Limitar a las últimas 10 imágenes por tipo
+    # 🔥 Limitar a las últimas 10 imágenes por tipo
     for tipo in ultimas:
         ultimas[tipo] = ultimas[tipo][:10]
 
