@@ -221,7 +221,8 @@ def index():
 
               const verMas = document.createElement('div');
               verMas.className = 'ver-mas';
-              verMas.innerHTML = `<button onclick="openGalleryPopup(data.ultimas['${tipo}'], 0)">Ver más 🖼️</button>`;
+              verMas.innerHTML = `<button onclick='openGalleryPopup(${JSON.stringify(data.ultimas[tipo])}, 0)'>Ver más 🖼️</button>`;
+
 
               bloque.appendChild(label);
               bloque.appendChild(img);
