@@ -14,10 +14,6 @@ def adjust_ingress_path():
     ingress_path = request.headers.get("X-Ingress-Path")
     if ingress_path:
         app.url_map.script_name = ingress_path
-        
-
-
-
 
 @app.route("/")
 def index():
@@ -93,15 +89,16 @@ def index():
         }
         .ver-mas {
           text-align: center;
-          margin-top: 10px;
+          margin-top: 5px;
         }
         .ver-mas button {
-          padding: 6px 12px;
+          padding: 4px 8px;
           border: none;
           border-radius: 6px;
           background: #007bff;
           color: #fff;
           cursor: pointer;
+          font-size: 0.9em;
         }
         .ver-mas button:hover {
           background: #0056b3;
@@ -119,6 +116,34 @@ def index():
           max-width: 90%; max-height: 90%;
           border-radius: 12px;
         }
+        #galleryPopup {
+          display: none;
+          position: fixed;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0,0,0,0.9);
+          justify-content: center;
+          align-items: center;
+          z-index: 2000;
+          overflow-y: auto;
+        }
+        #galleryContent {
+          max-width: 800px;
+          background: #222;
+          padding: 15px;
+          border-radius: 10px;
+        }
+        #galleryContent img {
+          width: 100%;
+          max-width: 600px;
+          border-radius: 8px;
+          margin: 10px auto;
+          display: block;
+        }
+        #galleryContent .hora {
+          color: #ccc;
+          text-align: center;
+          margin-bottom: 10px;
+        }
       </style>
     </head>
     <body>
@@ -127,6 +152,10 @@ def index():
 
       <div id="popup" class="popup" onclick="closePopup()">
         <img id="popupImg" src="">
+      </div>
+
+      <div id="galleryPopup" class="popup" onclick="closeGalleryPopup()">
+        <div id="galleryContent" onclick="event.stopPropagation()"></div>
       </div>
 
       <script>
@@ -144,7 +173,7 @@ def index():
           }
 
           gatos.forEach(async (gato) => {
-            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
+            const res = await fetch(`${basePath}/api/gatos/${gato}`);
             const data = await res.json();
 
             const card = document.createElement('div');
@@ -167,34 +196,37 @@ def index():
             };
 
             for (const tipo in tipos) {
-              if (!data.ultimas[tipo]) continue;
+              if (!data.ultimas[tipo].length) continue;
+
               const bloque = document.createElement('div');
               bloque.className = 'foto-bloque';
               const label = document.createElement('div');
               label.className = 'foto-tipo';
               label.textContent = tipos[tipo];
               const img = document.createElement('img');
-              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
+              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo][0].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo][0].original}`);
+
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
-              hora.textContent = data.ultimas[tipo].hora;
+              hora.textContent = data.ultimas[tipo][0].hora;
+
+              const verMas = document.createElement('div');
+              verMas.className = 'ver-mas';
+              verMas.innerHTML = `<button onclick="openGalleryPopup('${gato}', '${tipo}')">Ver más 🖼️</button>`;
+
               bloque.appendChild(label);
               bloque.appendChild(img);
               bloque.appendChild(hora);
+              bloque.appendChild(verMas);
               ultimas.appendChild(bloque);
             }
-
-            const verMas = document.createElement('div');
-            verMas.className = 'ver-mas';
-            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
 
             header.appendChild(nombre);
             card.appendChild(header);
             card.appendChild(ultimas);
-            card.appendChild(verMas);
 
             container.appendChild(card);
           });
@@ -207,8 +239,33 @@ def index():
         function closePopup() {
           document.getElementById('popup').style.display = 'none';
         }
-        function openGallery(gato) {
-          window.location.href = `${basePath}/galeria/${gato}`;
+
+        async function openGalleryPopup(gato, tipo) {
+          const res = await fetch(`${basePath}/api/gatos/${gato}`);
+          const data = await res.json();
+
+          const images = data.ultimas[tipo];
+          const galleryContent = document.getElementById('galleryContent');
+          galleryContent.innerHTML = '';
+
+          images.forEach(img => {
+            const image = document.createElement('img');
+            image.src = `${basePath}/media/${gato}/${img.file}`;
+            image.onclick = () => openPopup(`${basePath}/originales/${img.original}`);
+
+            const hora = document.createElement('div');
+            hora.className = 'hora';
+            hora.textContent = img.hora;
+
+            galleryContent.appendChild(image);
+            galleryContent.appendChild(hora);
+          });
+
+          document.getElementById('galleryPopup').style.display = 'flex';
+        }
+
+        function closeGalleryPopup() {
+          document.getElementById('galleryPopup').style.display = 'none';
         }
 
         loadGatos();
@@ -240,10 +297,10 @@ def lista_imagenes(gato):
     files.sort(reverse=True)
 
     ultimas = {
-        "comio_sala": None,
-        "comio_altillo": None,
-        "arenero": None,
-        "detectado": None
+        "comio_sala": [],
+        "comio_altillo": [],
+        "arenero": [],
+        "detectado": []
     }
 
     for f in files:
@@ -258,27 +315,20 @@ def lista_imagenes(gato):
                 pass
 
         base_name = "-".join(f.split("-")[:3])
-        #original_file = buscar_original(base_name)
-        #if not original_file:
-        #    print(f"⚠️ Original no encontrado para {f}, usando recorte")
         original_file = f
 
+        if "comedero_sala" in f:
+            ultimas["comio_sala"].append({"file": f, "original": original_file, "hora": hora})
+        elif "altillo" in f:
+            ultimas["comio_altillo"].append({"file": f, "original": original_file, "hora": hora})
+        elif "arenero" in f:
+            ultimas["arenero"].append({"file": f, "original": original_file, "hora": hora})
+        else:
+            ultimas["detectado"].append({"file": f, "original": original_file, "hora": hora})
 
-
-        if not ultimas["comio_sala"] and "comedero_sala" in f:
-            ultimas["comio_sala"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["comio_altillo"] and "altillo" in f:
-            ultimas["comio_altillo"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["arenero"] and "arenero" in f:
-            ultimas["arenero"] = {"file": f, "original": original_file, "hora": hora}
-        elif not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "original": original_file, "hora": hora}
-
-        if all(ultimas.values()):
-            break
-
-    if request.args.get("summary") == "true":
-        return jsonify({"ultimas": ultimas})
+    # Limitar a las últimas 10 imágenes por tipo
+    for tipo in ultimas:
+        ultimas[tipo] = ultimas[tipo][:10]
 
     return jsonify({
         "imagenes": files,
