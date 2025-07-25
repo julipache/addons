@@ -19,46 +19,79 @@ def index():
     <html lang="es">
     <head>
       <meta charset="UTF-8">
-      <title>Gatos 🐾</title>
+      <title>Panel de gatos 🐾</title>
       <style>
         body { font-family: sans-serif; margin: 1em; background: #f0f0f0; }
-        .gato { background: white; margin: 1em 0; padding: 1em; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; margin: 5px; }
+        .gato-card {
+          background: white;
+          margin: 1em 0;
+          padding: 1em;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .fotos {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          margin-top: 10px;
+        }
+        .foto-bloque {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 120px;
+        }
+        .foto-bloque img {
+          width: 100px;
+          height: 100px;
+          object-fit: cover;
+          border-radius: 6px;
+        }
+        .camara {
+          font-weight: bold;
+          font-size: 0.95em;
+          margin-top: 5px;
+        }
+        .hora {
+          font-size: 0.8em;
+          color: #555;
+        }
       </style>
     </head>
     <body>
       <h1>Panel de gatos 🐾</h1>
-      <div id="gatos">Cargando...</div>
+      <div id="panel">Cargando...</div>
 
       <script>
         const basePath = window.location.pathname.replace(/\\/$/, '');
-        const tipos = { comio_sala: "🍽️ Sala", comio_altillo: "🍽️ Altillo", arenero: "🪣 Arenero", detectado: "📸 Detectado" };
 
         async function cargarGatos() {
-          const res = await fetch(basePath + "/api/gatos");
-          const gatos = await res.json();
-          const contenedor = document.getElementById("gatos");
-          contenedor.innerHTML = "";
+          const panel = document.getElementById("panel");
+          panel.innerHTML = "";
+          const gatos = await fetch(basePath + "/api/gatos").then(r => r.json());
 
           for (const gato of gatos) {
-            const r = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
-            const data = await r.json();
-            const div = document.createElement("div");
-            div.className = "gato";
-            div.innerHTML = `<h3>${gato}</h3>`;
+            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
+            const data = await res.json();
+            const card = document.createElement("div");
+            card.className = "gato-card";
+            card.innerHTML = `<h2>${gato}</h2><div class="fotos"></div>`;
+            const contenedor = card.querySelector(".fotos");
 
-            for (const tipo in tipos) {
-              const info = data.ultimas[tipo];
-              if (info) {
-                div.innerHTML += `
-                  <div>
-                    <strong>${tipos[tipo]}</strong><br>
-                    <img src="${basePath}/media/${gato}/${info.file}" title="${info.hora}" loading="lazy">
-                  </div>`;
-              }
+            for (const cam in data.ultimas) {
+              const info = data.ultimas[cam];
+              if (!info) continue;
+              const bloque = document.createElement("div");
+              bloque.className = "foto-bloque";
+              bloque.innerHTML = `
+                <img src="${basePath}/media/${gato}/${info.file}" loading="lazy" title="${info.hora}">
+                <div class="camara">${cam}</div>
+                <div class="hora">${info.hora}</div>
+              `;
+              contenedor.appendChild(bloque);
             }
 
-            contenedor.appendChild(div);
+            panel.appendChild(card);
           }
         }
 
@@ -89,28 +122,28 @@ def api_gato(gato):
         and (gato == "sdg" or "sdg_julieta" not in f)
     ], reverse=True)
 
-    ultimas = {"comio_sala": None, "comio_altillo": None, "arenero": None, "detectado": None}
+    ultimas = {}
+
     for f in files:
-        def set_tipo(clave, tipo):
-            if not ultimas[tipo] and clave in f:
-                hora = "?"
-                try:
-                    ts = float(f.split("-")[1])
-                    hora = datetime.fromtimestamp(ts).strftime("%d/%m %H:%M")
-                except:
-                    pass
-                ultimas[tipo] = {"file": f, "hora": hora}
+        if "-clean_crop" not in f:
+            continue
 
-        set_tipo("comedero_sala", "comio_sala")
-        set_tipo("altillo", "comio_altillo")
-        set_tipo("arenero", "arenero")
-        if not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "hora": "?"}
+        camara = f.split("-")[0]  # Detecta la cámara como el primer bloque del nombre
 
-        if all(ultimas.values()):
+        if camara not in ultimas:
+            hora = "?"
+            try:
+                ts = float(f.split("-")[1])
+                hora = datetime.fromtimestamp(ts).strftime("%d/%m %H:%M")
+            except:
+                pass
+            ultimas[camara] = {"file": f, "hora": hora}
+
+        if len(ultimas) >= 12:
             break
 
-    return jsonify({"ultimas": ultimas} if request.args.get("summary") == "true" else {"imagenes": files, "ultimas": ultimas})
+    return jsonify({"ultimas": ultimas} if request.args.get("summary") == "true"
+                   else {"imagenes": files, "ultimas": ultimas})
 
 @app.route("/media/<gato>/<filename>")
 def media_file(gato, filename):
