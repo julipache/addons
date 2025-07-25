@@ -15,22 +15,57 @@ def adjust_ingress_path():
 @app.route("/")
 def index():
     return render_template_string("""
-    <html><body style="font-family:sans-serif">
-    <h1>Gatos 🐾</h1><div id="panel"></div>
-    <script>
-    fetch("api/gatos").then(r => r.json()).then(async gatos => {
-      const panel = document.getElementById("panel");
-      for (let g of gatos) {
-        const res = await fetch(`api/gatos/${g}?summary=true`);
-        const data = await res.json();
-        const card = document.createElement("div");
-        card.innerHTML = `<h3>${g}</h3>` + Object.values(data.ultimas).map(
-          v => v ? `<img src="/media/${g}/${v.file}" width="100">` : ''
-        ).join("");
-        panel.appendChild(card);
-      }
-    });
-    </script></body></html>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>Gatos 🐾</title>
+      <style>
+        body { font-family: sans-serif; margin: 1em; background: #f0f0f0; }
+        .gato { background: white; margin: 1em 0; padding: 1em; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        img { width: 100px; height: 100px; object-fit: cover; border-radius: 6px; margin: 5px; }
+      </style>
+    </head>
+    <body>
+      <h1>Panel de gatos 🐾</h1>
+      <div id="gatos">Cargando...</div>
+
+      <script>
+        const basePath = window.location.pathname.replace(/\\/$/, '');
+        const tipos = { comio_sala: "🍽️ Sala", comio_altillo: "🍽️ Altillo", arenero: "🪣 Arenero", detectado: "📸 Detectado" };
+
+        async function cargarGatos() {
+          const res = await fetch(basePath + "/api/gatos");
+          const gatos = await res.json();
+          const contenedor = document.getElementById("gatos");
+          contenedor.innerHTML = "";
+
+          for (const gato of gatos) {
+            const r = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
+            const data = await r.json();
+            const div = document.createElement("div");
+            div.className = "gato";
+            div.innerHTML = `<h3>${gato}</h3>`;
+
+            for (const tipo in tipos) {
+              const info = data.ultimas[tipo];
+              if (info) {
+                div.innerHTML += `
+                  <div>
+                    <strong>${tipos[tipo]}</strong><br>
+                    <img src="${basePath}/media/${gato}/${info.file}" title="${info.hora}" loading="lazy">
+                  </div>`;
+              }
+            }
+
+            contenedor.appendChild(div);
+          }
+        }
+
+        cargarGatos();
+      </script>
+    </body>
+    </html>
     """)
 
 @app.route("/api/gatos")
@@ -43,7 +78,7 @@ def api_gatos():
     ]))
 
 @app.route("/api/gatos/<gato>")
-def api_imagenes(gato):
+def api_gato(gato):
     carpeta = os.path.join(CLASIFICADO_DIR, gato)
     if not os.path.exists(carpeta):
         return jsonify({"imagenes": [], "ultimas": {}})
@@ -55,33 +90,34 @@ def api_imagenes(gato):
     ], reverse=True)
 
     ultimas = {"comio_sala": None, "comio_altillo": None, "arenero": None, "detectado": None}
-
     for f in files:
-        def set(tipo, clave):
+        def set_tipo(clave, tipo):
             if not ultimas[tipo] and clave in f:
                 hora = "?"
                 try:
                     ts = float(f.split("-")[1])
                     hora = datetime.fromtimestamp(ts).strftime("%d/%m %H:%M")
-                except: pass
+                except:
+                    pass
                 ultimas[tipo] = {"file": f, "hora": hora}
 
-        set("comio_sala", "comedero_sala")
-        set("comio_altillo", "altillo")
-        set("arenero", "arenero")
+        set_tipo("comedero_sala", "comio_sala")
+        set_tipo("altillo", "comio_altillo")
+        set_tipo("arenero", "arenero")
         if not ultimas["detectado"]:
             ultimas["detectado"] = {"file": f, "hora": "?"}
 
         if all(ultimas.values()):
             break
 
-    return jsonify({"ultimas": ultimas} if request.args.get("summary") == "true"
-                   else {"imagenes": files, "ultimas": ultimas})
+    return jsonify({"ultimas": ultimas} if request.args.get("summary") == "true" else {"imagenes": files, "ultimas": ultimas})
 
 @app.route("/media/<gato>/<filename>")
-def media(gato, filename):
-    carpeta = os.path.join(CLASIFICADO_DIR, gato)
-    return send_from_directory(carpeta, filename) if os.path.exists(carpeta) else abort(404)
+def media_file(gato, filename):
+    path = os.path.join(CLASIFICADO_DIR, gato)
+    if os.path.exists(path):
+        return send_from_directory(path, filename)
+    return abort(404)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8099)
