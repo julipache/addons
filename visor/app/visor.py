@@ -5,37 +5,31 @@ from datetime import datetime
 app = Flask(__name__)
 
 CLASIFICADO_DIR = "/media/frigate/clasificado"
-ORIGINALES_DIR = "/media/frigate/originales"
 
 @app.before_request
 def adjust_ingress_path():
-    ingress_path = request.headers.get("X-Ingress-Path")
-    if ingress_path:
-        app.url_map.script_name = ingress_path
-
-def buscar_original(base_name):
-    try:
-        return next((f for f in os.listdir(ORIGINALES_DIR) if f.startswith(base_name)), None)
-    except Exception as e:
-        print(f"❌ Error buscando original: {e}")
-        return None
+    ingress = request.headers.get("X-Ingress-Path")
+    if ingress:
+        app.url_map.script_name = ingress
 
 @app.route("/")
 def index():
     return render_template_string("""
-    <html><head><title>Gatos</title></head>
-    <body><h1>Panel de gatos 🐾</h1><div id="panel"></div>
+    <html><body style="font-family:sans-serif">
+    <h1>Gatos 🐾</h1><div id="panel"></div>
     <script>
-      fetch("api/gatos").then(r => r.json()).then(async gatos => {
-        const panel = document.getElementById("panel");
-        if (!gatos.length) return panel.innerHTML = "No hay gatos";
-        for (let g of gatos) {
-          const d = await fetch(`api/gatos/${g}?summary=true`).then(r => r.json());
-          panel.innerHTML += `<h2>${g}</h2>` + Object.entries(d.ultimas).map(([k, v]) =>
-            v ? `<img src="/media/${g}/${v.file}" width="100"><small>${v.hora}</small>` : ''
-          ).join('');
-        }
-      });
+    fetch("api/gatos").then(r => r.json()).then(async gatos => {
+      const panel = document.getElementById("panel");
+      for (let g of gatos) {
+        const res = await fetch(`api/gatos/${g}?summary=true`);
+        const data = await res.json();
+        const card = document.createElement("div");
+        card.innerHTML = `<h3>${g}</h3>` + Object.values(data.ultimas).map(
+          v => v ? `<img src="/media/${g}/${v.file}" width="100">` : ''
+        ).join("");
+        panel.appendChild(card);
+      }
+    });
     </script></body></html>
     """)
 
@@ -61,24 +55,22 @@ def api_imagenes(gato):
     ], reverse=True)
 
     ultimas = {"comio_sala": None, "comio_altillo": None, "arenero": None, "detectado": None}
+
     for f in files:
-        base = "-".join(f.split("-")[:3])
-        original = buscar_original(base) or f
-        hora = "?"
-        try:
-            ts = float(f.split("-")[1])
-            hora = datetime.fromtimestamp(ts).strftime("%d/%m %H:%M")
-        except: pass
+        def set(tipo, clave):
+            if not ultimas[tipo] and clave in f:
+                hora = "?"
+                try:
+                    ts = float(f.split("-")[1])
+                    hora = datetime.fromtimestamp(ts).strftime("%d/%m %H:%M")
+                except: pass
+                ultimas[tipo] = {"file": f, "hora": hora}
 
-        def set_if_none(key, substr):
-            if not ultimas[key] and substr in f:
-                ultimas[key] = {"file": f, "original": original, "hora": hora}
-
-        set_if_none("comio_sala", "comedero_sala")
-        set_if_none("comio_altillo", "altillo")
-        set_if_none("arenero", "arenero")
+        set("comio_sala", "comedero_sala")
+        set("comio_altillo", "altillo")
+        set("arenero", "arenero")
         if not ultimas["detectado"]:
-            ultimas["detectado"] = {"file": f, "original": original, "hora": hora}
+            ultimas["detectado"] = {"file": f, "hora": "?"}
 
         if all(ultimas.values()):
             break
@@ -88,12 +80,8 @@ def api_imagenes(gato):
 
 @app.route("/media/<gato>/<filename>")
 def media(gato, filename):
-    path = os.path.join(CLASIFICADO_DIR, gato)
-    return send_from_directory(path, filename) if os.path.exists(path) else abort(404)
-
-@app.route("/originales/<filename>")
-def originales(filename):
-    return send_from_directory(ORIGINALES_DIR, filename) if os.path.exists(ORIGINALES_DIR) else abort(404)
+    carpeta = os.path.join(CLASIFICADO_DIR, gato)
+    return send_from_directory(carpeta, filename) if os.path.exists(carpeta) else abort(404)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8099)
