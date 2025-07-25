@@ -1,3 +1,4 @@
+@ -1,321 +1,306 @@
 from flask import Flask, jsonify, send_from_directory, render_template_string, abort, request
 import os
 from datetime import datetime
@@ -14,6 +15,25 @@ def adjust_ingress_path():
     ingress_path = request.headers.get("X-Ingress-Path")
     if ingress_path:
         app.url_map.script_name = ingress_path
+        
+def buscar_original(base_name):
+    """
+    Busca en ORIGINALES_DIR un archivo que empiece con base_name.
+    """
+    print(f"🔍 Buscando original para base_name: {base_name}")
+    try:
+        archivos = os.listdir(ORIGINALES_DIR)
+        print(f"📂 Archivos en originales: {len(archivos)} encontrados")
+        for f in archivos:
+            if f.startswith(base_name):
+                print(f"✅ Original encontrado: {f}")
+                return f
+        print("❌ No se encontró original, usando recorte")
+    except Exception as e:
+        print(f"⚠️ Error buscando original para {base_name}: {e}")
+    return None
+
+
 
 @app.route("/")
 def index():
@@ -89,16 +109,15 @@ def index():
         }
         .ver-mas {
           text-align: center;
-          margin-top: 5px;
+          margin-top: 10px;
         }
         .ver-mas button {
-          padding: 4px 8px;
+          padding: 6px 12px;
           border: none;
           border-radius: 6px;
           background: #007bff;
           color: #fff;
           cursor: pointer;
-          font-size: 0.9em;
         }
         .ver-mas button:hover {
           background: #0056b3;
@@ -107,45 +126,14 @@ def index():
           display: none;
           position: fixed;
           top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.9);
+          background: rgba(0,0,0,0.8);
           justify-content: center;
           align-items: center;
-          z-index: 2000;
-          overflow: hidden;
+          z-index: 1000;
         }
         .popup img {
-          max-width: 90%; max-height: 80%;
+          max-width: 90%; max-height: 90%;
           border-radius: 12px;
-        }
-        .popup .controls {
-          position: absolute;
-          width: 100%;
-          top: 50%;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          transform: translateY(-50%);
-        }
-        .popup .btn {
-          background: rgba(0,0,0,0.5);
-          color: #fff;
-          font-size: 2em;
-          border: none;
-          cursor: pointer;
-          padding: 10px;
-          border-radius: 50%;
-          user-select: none;
-        }
-        .popup .btn:hover {
-          background: rgba(0,0,0,0.8);
-        }
-        .popup .caption {
-          position: absolute;
-          bottom: 20px;
-          color: #fff;
-          font-size: 1em;
-          text-align: center;
-          width: 100%;
         }
       </style>
     </head>
@@ -153,19 +141,12 @@ def index():
       <h1>Panel de gatos 🐾</h1>
       <div class="container" id="gatos"></div>
 
-      <div id="galleryPopup" class="popup" onclick="closeGalleryPopup()">
-        <div class="controls">
-          <button class="btn" onclick="prevImage(event)">&#8592;</button>
-          <button class="btn" onclick="nextImage(event)">&#8594;</button>
-        </div>
-        <img id="galleryImg" src="">
-        <div class="caption" id="galleryCaption"></div>
+      <div id="popup" class="popup" onclick="closePopup()">
+        <img id="popupImg" src="">
       </div>
 
       <script>
         const basePath = window.location.pathname.replace(/\\/$/, '');
-        let galleryImages = [];
-        let currentIndex = 0;
 
         async function loadGatos() {
           const res = await fetch(`${basePath}/api/gatos`);
@@ -179,7 +160,7 @@ def index():
           }
 
           gatos.forEach(async (gato) => {
-            const res = await fetch(`${basePath}/api/gatos/${gato}`);
+            const res = await fetch(`${basePath}/api/gatos/${gato}?summary=true`);
             const data = await res.json();
 
             const card = document.createElement('div');
@@ -202,70 +183,48 @@ def index():
             };
 
             for (const tipo in tipos) {
-              if (!data.ultimas[tipo].length) continue;
-
+              if (!data.ultimas[tipo]) continue;
               const bloque = document.createElement('div');
               bloque.className = 'foto-bloque';
               const label = document.createElement('div');
               label.className = 'foto-tipo';
               label.textContent = tipos[tipo];
               const img = document.createElement('img');
-              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo][0].file}`;
+              img.src = `${basePath}/media/${gato}/${data.ultimas[tipo].file}`;
               img.alt = tipo;
               img.loading = "lazy";
-              img.onclick = () => openGalleryPopup(${JSON.stringify(data.ultimas[tipo])}, 0);
-
+              img.onclick = () => openPopup(`${basePath}/originales/${data.ultimas[tipo].original}`); // ✅ Carga original
               const hora = document.createElement('div');
               hora.className = 'foto-hora';
-              hora.textContent = data.ultimas[tipo][0].hora;
-
-              const verMas = document.createElement('div');
-              verMas.className = 'ver-mas';
-              verMas.innerHTML = `<button onclick='openGalleryPopup(${JSON.stringify(data.ultimas[tipo])}, 0)'>Ver más 🖼️</button>`;
-
+              hora.textContent = data.ultimas[tipo].hora;
               bloque.appendChild(label);
               bloque.appendChild(img);
               bloque.appendChild(hora);
-              bloque.appendChild(verMas);
               ultimas.appendChild(bloque);
             }
+
+            const verMas = document.createElement('div');
+            verMas.className = 'ver-mas';
+            verMas.innerHTML = `<button onclick="openGallery('${gato}')">Ver galería ▶</button>`;
 
             header.appendChild(nombre);
             card.appendChild(header);
             card.appendChild(ultimas);
+            card.appendChild(verMas);
 
             container.appendChild(card);
           });
         }
 
-        function openGalleryPopup(images, index) {
-          event.stopPropagation();
-          galleryImages = images;
-          currentIndex = index;
-          updateGallery();
-          document.getElementById('galleryPopup').style.display = 'flex';
+        function openPopup(url) {
+          document.getElementById('popupImg').src = url;
+          document.getElementById('popup').style.display = 'flex';
         }
-
-        function updateGallery() {
-          const img = galleryImages[currentIndex];
-          document.getElementById('galleryImg').src = `${basePath}/media/${img.gato}/${img.file}`;
-          document.getElementById('galleryCaption').textContent = img.hora;
+        function closePopup() {
+          document.getElementById('popup').style.display = 'none';
         }
-
-        function prevImage(e) {
-          e.stopPropagation();
-          currentIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length;
-          updateGallery();
-        }
-
-        function nextImage(e) {
-          e.stopPropagation();
-          currentIndex = (currentIndex + 1) % galleryImages.length;
-          updateGallery();
-        }
-
-        function closeGalleryPopup() {
-          document.getElementById('galleryPopup').style.display = 'none';
+        function openGallery(gato) {
+          window.location.href = `${basePath}/galeria/${gato}`;
         }
 
         loadGatos();
@@ -294,13 +253,13 @@ def lista_imagenes(gato):
         if f.lower().endswith(('.jpg', '.png', '.jpeg'))
         and (gato == "sdg" or "sdg_julieta" not in f)
     ]
-    files.sort(reverse=True)  # 🔥 Ordenar por nombre descendente
+    files.sort(reverse=True)
 
     ultimas = {
-        "comio_sala": [],
-        "comio_altillo": [],
-        "arenero": [],
-        "detectado": []
+        "comio_sala": None,
+        "comio_altillo": None,
+        "arenero": None,
+        "detectado": None
     }
 
     for f in files:
@@ -314,28 +273,28 @@ def lista_imagenes(gato):
             except:
                 pass
 
-        original_file = f
+        base_name = "-".join(f.split("-")[:3])
+        original_file = buscar_original(base_name)
+        if not original_file:
+            print(f"⚠️ Original no encontrado para {f}, usando recorte")
+            original_file = f
 
-        # ✅ Añadir nombre del gato a cada imagen
-        img_data = {
-            "file": f,
-            "original": original_file,
-            "hora": hora,
-            "gato": gato
-        }
 
-        if "comedero_sala" in f:
-            ultimas["comio_sala"].append(img_data)
-        elif "altillo" in f:
-            ultimas["comio_altillo"].append(img_data)
-        elif "arenero" in f:
-            ultimas["arenero"].append(img_data)
-        else:
-            ultimas["detectado"].append(img_data)
 
-    # 🔥 Limitar a las últimas 10 imágenes por tipo
-    for tipo in ultimas:
-        ultimas[tipo] = ultimas[tipo][:10]
+        if not ultimas["comio_sala"] and "comedero_sala" in f:
+            ultimas["comio_sala"] = {"file": f, "original": original_file, "hora": hora}
+        elif not ultimas["comio_altillo"] and "altillo" in f:
+            ultimas["comio_altillo"] = {"file": f, "original": original_file, "hora": hora}
+        elif not ultimas["arenero"] and "arenero" in f:
+            ultimas["arenero"] = {"file": f, "original": original_file, "hora": hora}
+        elif not ultimas["detectado"]:
+            ultimas["detectado"] = {"file": f, "original": original_file, "hora": hora}
+
+        if all(ultimas.values()):
+            break
+
+    if request.args.get("summary") == "true":
+        return jsonify({"ultimas": ultimas})
 
     return jsonify({
         "imagenes": files,
