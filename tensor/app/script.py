@@ -1,17 +1,11 @@
 import subprocess
 import time
-from pathlib import Path
-
-YOLO_FILES = [
-    Path("/media/yolov3.weights"),
-    Path("/media/yolov3.cfg"),
-    Path("/media/coco.names"),
-]
 
 
 def run_script(script_name, args=None):
     args = args or []
     print(f"Running script: {script_name} with arguments: {args}", flush=True)
+
     result = subprocess.run(
         ["python", script_name, *args],
         capture_output=True,
@@ -33,23 +27,10 @@ def run_script(script_name, args=None):
     return result.returncode
 
 
-def yolo_available():
-    missing = [str(path) for path in YOLO_FILES if not path.exists()]
-    if missing:
-        print(
-            "YOLOv3 crop step skipped because these files are missing: "
-            + ", ".join(missing),
-            flush=True,
-        )
-        return False
-    return True
-
-
 if __name__ == "__main__":
     while True:
-        if yolo_available():
-            run_script("recortar.py")
-
+        # Frigate ya detecta los gatos. Este add-on solo clasifica los recortes
+        # existentes en /media/frigate/recortadas.
         run_script("pruebamsiva.py")
 
         print("Waiting for 1 hour before the next run.", flush=True)
