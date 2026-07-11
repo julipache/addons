@@ -1,26 +1,24 @@
 FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    cron
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Crear un enlace simbólico de python a python3
-RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias necesarias
-RUN pip install tensorflow numpy pillow opencv-python opencv-python-headless sendgrid
-
-# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar el directorio de la aplicación
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install \
+        tensorflow==2.15.1 \
+        numpy==1.26.4 \
+        pillow==10.4.0 \
+        opencv-python-headless==4.10.0.84
+
 COPY ./app /app
 
-
-
-# Comando para ejecutar el script de configuración de cron
 CMD ["python", "script.py"]
