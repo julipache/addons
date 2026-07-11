@@ -246,8 +246,8 @@ def crear_cuerpo_email(resumen, fotos):
     return html
 
 def send_email(subject, body, fotos, destinatarios):
-    sender_email = "75642e001@smtp-brevo.com"
-    password = "8nP5LXfVT1tmvCgW"
+    sender_email = "ae6b94001@smtp-brevo.com"
+    password = "xsmtpsib-9f4831745e50d23544520387ff8bcae350afefc41afac6b5fadf1f23e058c92b-vU6VsM1FWG3uafEg"
 
     message = MIMEMultipart()
     message["From"] = sender_email
